@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="scoplan.camera" version="1.0.0"
+	xmlns="http://apache.org/cordova/ns/plugins/1.0"
+	xmlns:android="http://schemas.android.com/apk/res/android">
+	<name>ScoplanCamera</name>
+	<js-module name="ScoplanCamera" src="www/ScoplanCamera.js">
+		<clobbers target="cordova.plugins.ScoplanCamera" />
+	</js-module>
+	<platform name="android">
+		<config-file parent="/*" target="res/xml/config.xml">
+			<feature name="ScoplanCamera">
+				<param name="android-package" value="scoplan.camera.ScoplanCamera" />
+			</feature>
+		</config-file>
+		<config-file parent="/*" target="AndroidManifest.xml" />
+		<config-file parent="/manifest" target="AndroidManifest.xml">
+			<uses-permission android:name="android.permission.CAMERA" />
+			<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+			<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION " />
+			<uses-feature android:name="android.hardware.camera" android:required="false" />
+			<uses-feature android:name="android.hardware.sensor.accelerometer" />
+			<uses-feature android:name="android.hardware.sensor.compass" />
+		</config-file>
+		<config-file parent="/manifest/application" target="AndroidManifest.xml">
+			<activity android:name="scoplan.camera.PhotoEditorActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+			<activity android:name="scoplan.camera.PhotoEditorMesureCustomActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorStickerActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorTextActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" android:windowSoftInputMode="adjustPan" />
+			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorCropActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorDrawActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+		</config-file>
+		<source-file src="src/android/CameraEventListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CameraFragment.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CameraSeekBarListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CameraUtils.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CustomI.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/ImageCameraAvailableListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/OnImageCaptureListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/PhotoEditorActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/PhotoEditorMenu.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/PhotoEditorMesureCustomActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/PhotoEditorStore.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/ScoplanCamera.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<resource-file src="src/android/res/drawable/back_arrow.xml" target="res/drawable/back_arrow.xml" />
+		<resource-file src="src/android/res/drawable/camsicon.png" target="res/drawable/camsicon.png" />
+		<resource-file src="src/android/res/drawable/custom_spinner.xml" target="res/drawable/custom_spinner.xml" />
+		<resource-file src="src/android/res/drawable/delete_img.png" target="res/drawable/delete_img.png" />
+		<resource-file src="src/android/res/drawable/draw_img.png" target="res/drawable/draw_img.png" />
+		<resource-file src="src/android/res/drawable/flash.png" target="res/drawable/flash.png" />
+		<resource-file src="src/android/res/drawable/flash_on.png" target="res/drawable/flash_on.png" />
+		<resource-file src="src/android/res/drawable/mesure.png" target="res/drawable/mesure.png" />
+		<resource-file src="src/android/res/drawable/mesure_bar.xml" target="res/drawable/mesure_bar.xml" />
+		<resource-file src="src/android/res/drawable/shape_back.xml" target="res/drawable/shape_back.xml" />
+		<resource-file src="src/android/res/drawable/shape_cancel.xml" target="res/drawable/shape_cancel.xml" />
+		<resource-file src="src/android/res/drawable/shape_rectangle.xml" target="res/drawable/shape_rectangle.xml" />
+		<resource-file src="src/android/res/layout/fragment_camera.xml" target="res/layout/fragment_camera.xml" />
+		<resource-file src="src/android/res/layout/fragment_photo_editor_menu.xml.xml" target="res/layout/fragment_photo_editor_menu.xml.xml" />
+		<framework custom="true" src="src/android/gradle/scoplanCamera.gradle" type="gradleReference" />
+		<framework src="com.google.android.material:material:1.5.0-alpha02" />
+		<framework src="com.squareup.picasso:picasso:2.8" />
+		<framework src="androidx.constraintlayout:constraintlayout:2.1.4" />
+		<lib-file src="src/android/libs/ds-photo-editor-sdk-v9.aar" />
+	</platform>
+	<platform name="ios">
+		<config-file parent="/*" target="config.xml">
+			<feature name="ScoplanCamera">
+				<param name="ios-package" value="ScoplanCamera" />
+			</feature>
+		</config-file>
+		<source-file src="src/ios/AVCamPhotoCaptureDelegate.h" />
+		<source-file src="src/ios/AVCamPhotoCaptureDelegate.m" />
+		<source-file src="src/ios/AVCamPreviewView.h" />
+		<source-file src="src/ios/AVCamPreviewView.m" />
+		<source-file src="src/ios/ScoplanCamera.h" />
+		<source-file src="src/ios/ScoplanCamera.m" />
+		<source-file src="src/ios/UICustomPickerController.h" />
+		<source-file src="src/ios/UICustomPickerController.m" />
+		<source-file src="src/ios/UIImagePickerDelegate.h" />
+		<source-file src="src/ios/UIImagePickerDelegate.m" />
+		<source-file src="src/ios/UIScoplanCamera.h" />
+		<source-file src="src/ios/UIScoplanCamera.m" />
+        <resource-file src="src/ios/bottomPhotoEditor.xib"/>
+        <resource-file src="src/ios/multicam.xib"/>
+        <resource-file src="src/ios/ScoplanCamera.storyboard"/>
+        <resource-file src="src/ios/camsicons.xcassets"/>
+        <resource-file src="src/ios/DSPhotoEditorSDK.framework"/>
+	</platform>
+</plugin>

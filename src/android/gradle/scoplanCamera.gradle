@@ -1,0 +1,8 @@
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+dependencies {
+    implementation(name:'ds-photo-editor-sdk-v9', ext:'aar')
+}

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="20037" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina6_1" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="20020"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--ScoplanCamera-->
+        <scene sceneID="WnN-d9-cPV">
+            <objects>
+                <viewController storyboardIdentifier="ScoplanCamera" title="ScoplanCamera" useStoryboardIdentifierAsRestorationIdentifier="YES" id="AA8-Jf-iAm" customClass="UIScoplanCamera" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="8ze-qw-dRA">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Dph-cD-OZJ" userLabel="Preview" customClass="AVCamPreviewView">
+                                <rect key="frame" x="0.0" y="0.0" width="414" height="862"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                <gestureRecognizers/>
+                                <connections>
+                                    <outletCollection property="gestureRecognizers" destination="Wqi-ea-KMR" appends="YES" id="oAd-i0-IMA"/>
+                                </connections>
+                            </view>
+                            <view alpha="0.25" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="jGC-3L-9Um" userLabel="black">
+                                <rect key="frame" x="0.0" y="735" width="414" height="127"/>
+                                <color key="backgroundColor" systemColor="viewFlipsideBackgroundColor"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" secondItem="jGC-3L-9Um" secondAttribute="height" multiplier="160:49" id="YuY-vB-8QI"/>
+                                </constraints>
+                            </view>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="lmm-Ty-vl6" userLabel="imageview">
+                                <rect key="frame" x="20" y="787" width="50" height="50"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="50" id="GxG-7V-98h"/>
+                                    <constraint firstAttribute="height" constant="50" id="j8A-7b-Pdm"/>
+                                </constraints>
+                            </imageView>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="nqA-FF-aMJ">
+                                <rect key="frame" x="275.5" y="797" width="53" height="30"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="30" id="1gH-LF-9jk"/>
+                                </constraints>
+                                <state key="normal" title="Annuler">
+                                    <color key="titleColor" red="1" green="1" blue="0.10045030381944445" alpha="1" colorSpace="calibratedRGB"/>
+                                </state>
+                                <connections>
+                                    <action selector="backtowebview:" destination="AA8-Jf-iAm" eventType="touchUpInside" id="8HQ-lG-VyA"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="center" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="cRf-Sp-1y2">
+                                <rect key="frame" x="182" y="787" width="50" height="50"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="50" id="3uF-tj-9po"/>
+                                    <constraint firstAttribute="width" secondItem="cRf-Sp-1y2" secondAttribute="height" multiplier="1:1" id="jhA-cY-Fs5"/>
+                                    <constraint firstAttribute="width" constant="50" id="uOm-7L-ufR"/>
+                                </constraints>
+                                <state key="normal" image="cameraicon"/>
+                                <connections>
+                                    <action selector="capturePhoto:" destination="AA8-Jf-iAm" eventType="touchUpInside" id="SYO-4q-i9Z"/>
+                                </connections>
+                            </button>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="YrK-DJ-ony">
+                                <rect key="frame" x="182" y="787" width="50" height="50"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="50" id="1ap-FV-bAg"/>
+                                    <constraint firstAttribute="width" constant="50" id="8dJ-8K-RdS"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="jij-t7-zCY"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstItem="jij-t7-zCY" firstAttribute="bottom" secondItem="YrK-DJ-ony" secondAttribute="bottom" constant="25" id="0MC-Rx-Lgu"/>
+                            <constraint firstItem="jGC-3L-9Um" firstAttribute="leading" secondItem="jij-t7-zCY" secondAttribute="leading" id="3iI-5o-Y21"/>
+                            <constraint firstItem="YrK-DJ-ony" firstAttribute="centerX" secondItem="8ze-qw-dRA" secondAttribute="centerX" id="56H-C7-K1g"/>
+                            <constraint firstItem="Dph-cD-OZJ" firstAttribute="bottom" secondItem="jij-t7-zCY" secondAttribute="bottom" id="Bla-Mv-ywP"/>
+                            <constraint firstItem="cRf-Sp-1y2" firstAttribute="centerX" secondItem="8ze-qw-dRA" secondAttribute="centerX" id="IwK-Lt-F2A"/>
+                            <constraint firstItem="Dph-cD-OZJ" firstAttribute="leading" secondItem="8ze-qw-dRA" secondAttribute="leading" id="ZPE-Xb-bhT"/>
+                            <constraint firstItem="jij-t7-zCY" firstAttribute="bottom" secondItem="cRf-Sp-1y2" secondAttribute="bottom" constant="25" id="d7J-t5-TqX"/>
+                            <constraint firstAttribute="trailing" secondItem="Dph-cD-OZJ" secondAttribute="trailing" id="owy-xt-NSQ"/>
+                            <constraint firstItem="Dph-cD-OZJ" firstAttribute="top" secondItem="8ze-qw-dRA" secondAttribute="top" id="pfp-tG-hKN"/>
+                            <constraint firstItem="jGC-3L-9Um" firstAttribute="trailing" secondItem="jij-t7-zCY" secondAttribute="trailing" id="qXe-P5-MY6"/>
+                            <constraint firstItem="jij-t7-zCY" firstAttribute="bottom" secondItem="nqA-FF-aMJ" secondAttribute="bottom" constant="35" id="rjG-z6-8aH"/>
+                            <constraint firstItem="jGC-3L-9Um" firstAttribute="bottom" secondItem="jij-t7-zCY" secondAttribute="bottom" id="rq9-se-5dj"/>
+                            <constraint firstItem="nqA-FF-aMJ" firstAttribute="centerX" secondItem="8ze-qw-dRA" secondAttribute="centerX" constant="95" id="sCH-2R-4Wi"/>
+                            <constraint firstItem="jij-t7-zCY" firstAttribute="bottom" secondItem="lmm-Ty-vl6" secondAttribute="bottom" constant="25" id="t0l-GX-7v2"/>
+                            <constraint firstItem="lmm-Ty-vl6" firstAttribute="leading" secondItem="jij-t7-zCY" secondAttribute="leading" constant="20" id="zuS-KY-tMG"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="blackbottom" destination="jGC-3L-9Um" id="meg-H7-5oV"/>
+                        <outlet property="imageview" destination="lmm-Ty-vl6" id="4tT-eQ-Drt"/>
+                        <outlet property="okbutton" destination="nqA-FF-aMJ" id="BGp-mM-zEZ"/>
+                        <outlet property="photoButton" destination="cRf-Sp-1y2" id="E8a-Tn-i4I"/>
+                        <outlet property="previewView" destination="Dph-cD-OZJ" id="vRY-ZA-0Lb"/>
+                        <outlet property="progress" destination="YrK-DJ-ony" id="dbU-hq-8qa"/>
+                        <outlet property="rootView" destination="8ze-qw-dRA" id="82p-tj-JCg"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Mwu-hs-3d6" userLabel="First Responder" sceneMemberID="firstResponder"/>
+                <tapGestureRecognizer id="Wqi-ea-KMR"/>
+            </objects>
+            <point key="canvasLocation" x="-245.625" y="-183.80281690140845"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="cameraicon" width="214" height="213"/>
+        <systemColor name="viewFlipsideBackgroundColor">
+            <color red="0.1215686274509804" green="0.12941176470588239" blue="0.14117647058823529" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </systemColor>
+    </resources>
+</document>
