@@ -56,7 +56,7 @@
 		<resource-file src="src/android/res/drawable/shape_cancel.xml" target="res/drawable/shape_cancel.xml" />
 		<resource-file src="src/android/res/drawable/shape_rectangle.xml" target="res/drawable/shape_rectangle.xml" />
 		<resource-file src="src/android/res/layout/fragment_camera.xml" target="res/layout/fragment_camera.xml" />
-		<resource-file src="src/android/res/layout/fragment_photo_editor_menu.xml.xml" target="res/layout/fragment_photo_editor_menu.xml.xml" />
+		<resource-file src="src/android/res/layout/fragment_photo_editor_menu.xml" target="res/layout/fragment_photo_editor_menu.xml" />
 		<framework custom="true" src="src/android/gradle/scoplanCamera.gradle" type="gradleReference" />
 		<framework src="com.google.android.material:material:1.5.0-alpha02" />
 		<framework src="com.squareup.picasso:picasso:2.8" />
