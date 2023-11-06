@@ -7,7 +7,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Sensor;
@@ -65,11 +64,11 @@ import java.util.List;
 import scoplan.camera.CameraUtils;
 import scoplan.camera.PhotoEditorActivity;
 import scoplan.camera.CameraEventListener;
-
-import hello.plugin.test.R;
+import scoplan.camera.FakeR;
 
 public class CameraFragment extends Fragment implements scoplan.camera.OnImageCaptureListener, View.OnClickListener, SensorEventListener {
     public static String SCOPLAN_TAG = "SCOPLAN_TAG";
+    private scoplan.camera.FakeR fakeR;
     private ImageButton camButton;
     private SeekBar zoomBar;
     private Button validationButton;
@@ -186,27 +185,29 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         displayManager = (DisplayManager) getActivity().getSystemService(Context.DISPLAY_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+
+        this.fakeR = new FakeR(getContext());
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view =  inflater.inflate(R.layout.fragment_camera, container, false);
-        camButton = view.findViewById(R.id.button_capture);
-        zoomBar = view.findViewById(R.id.camera_zoom);
-        validationButton = view.findViewById(R.id.valid_btn);
-        progressBar = view.findViewById(R.id.progressBar);
-        textureView = view.findViewById(R.id.cameraView);
-        drawOn2 = view.findViewById(R.id.draw_on_2);
-        drawOn = view.findViewById(R.id.draw_on);
+        View view =  inflater.inflate(this.fakeR.getLayout("fragment_camera"), container, false);
+        camButton = view.findViewById(this.fakeR.getId("button_capture"));
+        zoomBar = view.findViewById(this.fakeR.getId("camera_zoom"));
+        validationButton = view.findViewById(this.fakeR.getId("valid_btn"));
+        progressBar = view.findViewById(this.fakeR.getId("progressBar"));
+        textureView = view.findViewById(this.fakeR.getId("cameraView"));
+        drawOn2 = view.findViewById(this.fakeR.getId("draw_on_2"));
+        drawOn = view.findViewById(this.fakeR.getId("draw_on"));
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
-        souche = view.findViewById(R.id.image_souche);
-        cameraTopBar = view.findViewById(R.id.cameraTopBar);
-        cancelBtn = view.findViewById(R.id.cancel);
-        cancelBtn2 = view.findViewById(R.id.cancel_btn);
-        flashBtn = view.findViewById(R.id.flash_btn);
+        souche = view.findViewById(this.fakeR.getId("image_souche"));
+        cameraTopBar = view.findViewById(this.fakeR.getId("cameraTopBar"));
+        cancelBtn = view.findViewById(this.fakeR.getId("cancel"));
+        cancelBtn2 = view.findViewById(this.fakeR.getId("cancel_btn"));
+        flashBtn = view.findViewById(this.fakeR.getId("flash_btn"));
 
         camButton.setOnClickListener(this);
         drawOn2.setOnClickListener(this);
@@ -441,26 +442,28 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     @Override
     public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.button_capture:
-                this.takePicture();
-                break;
-            case R.id.draw_on_2:
-            case R.id.image_souche:
-            case R.id.draw_on:
-                this.startDrawing();
-                break;
-            case R.id.cancel:
-            case R.id.cancel_btn:
-                this.cancelTakePhoto();
-                break;
-            case R.id.valid_btn:
-                this.cameraEventListener.onUserValid(this.pictures);
-                break;
-            case R.id.flash_btn:
-                this.flashOn = !this.flashOn;
-                this.flashBtn.setImageResource(flashOn ? R.drawable.flash_on : R.drawable.flash);
-                break;
+        if(view.getId() == this.fakeR.getId("button_capture")) {
+            this.takePicture();
+        } else if(
+            view.getId() == this.fakeR.getId("draw_on_2") ||
+            view.getId() == this.fakeR.getId("image_souche") ||
+            view.getId() == this.fakeR.getId("draw_on")
+        ) {
+            this.startDrawing();
+        } else if(
+            view.getId() == this.fakeR.getId("cancel") ||
+            view.getId() == this.fakeR.getId("cancel_btn")
+        ) {
+            this.cancelTakePhoto();
+        } else if(
+            view.getId() == this.fakeR.getId("valid_btn")
+        ) {
+            this.cameraEventListener.onUserValid(this.pictures);
+        } else if(
+            view.getId() == this.fakeR.getId("flash_btn")
+        ) {
+            this.flashOn = !this.flashOn;
+            this.flashBtn.setImageResource(this.fakeR.getDrawable(flashOn ? "flash_on" : "flash"));
         }
     }
 

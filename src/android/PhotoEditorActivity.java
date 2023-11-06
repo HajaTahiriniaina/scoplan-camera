@@ -1,7 +1,6 @@
 package scoplan.camera;
 
 import android.annotation.SuppressLint;
-import android.app.FragmentManager;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -17,15 +16,18 @@ import com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity;
 
 import java.io.File;
 
-import hello.plugin.test.R;
+import scoplan.camera.FakeR;
 import scoplan.camera.PhotoEditorMenu;
 
 public class PhotoEditorActivity extends DsPhotoEditorActivity {
     private Uri e;
 
+    private FakeR fakeR;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        this.fakeR = new FakeR(this);
         this.e = this.getIntent().getData();
         if (this.e == null) {
             Toast.makeText(this, this.getString(com.dsphotoeditor.sdk.R.string.ds_photo_editor_error_no_uri), Toast.LENGTH_LONG).show();
@@ -37,15 +39,15 @@ public class PhotoEditorActivity extends DsPhotoEditorActivity {
 
     @SuppressLint("ResourceType")
     private void createBottomBar(Bundle var1) {
-        if (super.findViewById(R.id.ds_photo_editor_bottom_bar_fragment_container) != null) {
-            View super_bottom_bar = super.findViewById(R.id.ds_photo_editor_bottom_bar_fragment_container);
+        if (super.findViewById(fakeR.getId("ds_photo_editor_bottom_bar_fragment_container")) != null) {
+            View super_bottom_bar = super.findViewById(fakeR.getId("ds_photo_editor_bottom_bar_fragment_container"));
             super_bottom_bar.setVisibility(View.INVISIBLE);
             View custom_bottom_bar = new FrameLayout(this);
             RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, super_bottom_bar.getLayoutParams().height);
             lp.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
             custom_bottom_bar.setLayoutParams(lp);
             custom_bottom_bar.setId(12345678);
-            ((RelativeLayout) super.findViewById(R.id.ds_photo_editor_root_layout)).addView(custom_bottom_bar);
+            ((RelativeLayout) super.findViewById(fakeR.getId("ds_photo_editor_root_layout"))).addView(custom_bottom_bar);
             PhotoEditorMenu var2 = new PhotoEditorMenu();
             var2.setArguments(super.getIntent().getExtras());
             super.getFragmentManager().beginTransaction().add(custom_bottom_bar.getId(), var2, "custom_bottom_fragment_tag").commit();

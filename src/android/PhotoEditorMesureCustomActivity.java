@@ -30,10 +30,11 @@ import com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity;
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorTextActivity;
 import com.dsphotoeditor.sdk.ui.stickerview.StickerView;
 
-import hello.plugin.test.R;
+import scoplan.camera.FakeR;
 import scoplan.camera.CustomI;
 
 public class PhotoEditorMesureCustomActivity extends DsPhotoEditorTextActivity implements View.OnClickListener {
+    private FakeR fakeR;
     private StickerView a;
     private int b;
     private int c;
@@ -49,12 +50,13 @@ public class PhotoEditorMesureCustomActivity extends DsPhotoEditorTextActivity i
     @Override
     protected void onCreate(Bundle var1) {
         super.onCreate(var1);
+        this.fakeR = new FakeR(this);
         this.setContentView(com.dsphotoeditor.sdk.R.layout.activity_ds_photo_editor_sticker_text);
         if (original != null && !original.isRecycled()) {
             this.a();
             this.b();
             this.c();
-            RelativeLayout view = findViewById(R.id.ds_photo_editor_text_sticker_top_bar);
+            RelativeLayout view = findViewById(fakeR.getId("ds_photo_editor_text_sticker_top_bar"));
             TextView textview = (TextView)view.getChildAt(1);
             textview.setText("Mesure");
         } else {
@@ -145,7 +147,7 @@ public class PhotoEditorMesureCustomActivity extends DsPhotoEditorTextActivity i
                 }
                 if (var3.length() > 0) {
                     CustomI var4x = new CustomI(PhotoEditorMesureCustomActivity.this);
-                    Drawable d = ContextCompat.getDrawable(PhotoEditorMesureCustomActivity.this, R.drawable.mesure_bar);
+                    Drawable d = ContextCompat.getDrawable(PhotoEditorMesureCustomActivity.this, fakeR.getDrawable("mesure_bar"));
                     var4x.a(d.mutate());
                     var4x.a(var3);
                     var4x.a(-16777216);

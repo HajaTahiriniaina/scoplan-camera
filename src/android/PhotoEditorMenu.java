@@ -10,10 +10,11 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+
+import androidx.annotation.Nullable;
 
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity;
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorCropActivity;
@@ -21,8 +22,7 @@ import com.dsphotoeditor.sdk.activity.DsPhotoEditorDrawActivity;
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorTextActivity;
 
 import scoplan.camera.PhotoEditorMesureCustomActivity;
-
-import hello.plugin.test.R;
+import scoplan.camera.FakeR;
 
 public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
 
@@ -31,19 +31,26 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
     private DsPhotoEditorActivity a;
     private LinearLayout c;
     int[] clickableButton;
+    private FakeR fakeR;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        this.fakeR = new FakeR(getActivity());
+    }
 
     @Override
     public View onCreateView(LayoutInflater var1, ViewGroup var2, Bundle var3) {
-        View var4 = var1.inflate(R.layout.fragment_photo_editor_menu, var2, false);
+        View var4 = var1.inflate(fakeR.getLayout("fragment_photo_editor_menu"), var2, false);
         clickableButton = new int[] {
-            R.id.ds_photo_editor_btn_crop,
-            R.id.ds_photo_editor_btn_sticker,
-            R.id.ds_photo_editor_btn_text,
-            R.id.ds_photo_editor_btn_draw,
-            R.id.ds_photo_editor_btn_remove
+            fakeR.getId("ds_photo_editor_btn_crop"),
+            fakeR.getId("ds_photo_editor_btn_sticker"),
+            fakeR.getId("ds_photo_editor_btn_text"),
+            fakeR.getId("ds_photo_editor_btn_draw"),
+            fakeR.getId("ds_photo_editor_btn_remove"),
         };
         this.a = (DsPhotoEditorActivity) this.getActivity();
-        this.c = var4.findViewById(R.id.custom_photo_editor_bar_bottom_container);
+        this.c = var4.findViewById(fakeR.getId("custom_photo_editor_bar_bottom_container"));
         int var6;
         for(var6 = 0; var6 < clickableButton.length; ++var6) {
             this.c.findViewById(clickableButton[var6]).setOnClickListener(this);
@@ -55,7 +62,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
         int var2 = var1.getId();
         DsPhotoEditorActivity var10000;
         Intent var3;
-        if (var2 == R.id.ds_photo_editor_btn_crop) {
+        if(var2 == fakeR.getId("ds_photo_editor_btn_crop")) {
             DsPhotoEditorActivity.intentResult = null;
             DsPhotoEditorCropActivity.original = this.a.getHdBitmap();
             var3 = new Intent(this.a, DsPhotoEditorCropActivity.class);
@@ -63,7 +70,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
             this.a.getClass();
             var10000.startActivityForResult(var3, 3);
             this.a.toolType = 6;
-        } else if (var2 == R.id.ds_photo_editor_btn_sticker) {
+        } else if(var2 == fakeR.getId("ds_photo_editor_btn_sticker")) {
             DsPhotoEditorActivity.intentResult = null;
             PhotoEditorMesureCustomActivity.original = this.a.getHdBitmap();
             var3 = new Intent(this.a, PhotoEditorMesureCustomActivity.class);
@@ -71,7 +78,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
             this.a.getClass();
             var10000.startActivityForResult(var3, 2);
             this.a.toolType = 14;
-        } else if (var2 == R.id.ds_photo_editor_btn_text) {
+        } else if(var2 == fakeR.getId("ds_photo_editor_btn_text")) {
             DsPhotoEditorActivity.intentResult = null;
             DsPhotoEditorTextActivity.original = this.a.getHdBitmap();
             var3 = new Intent(this.a, DsPhotoEditorTextActivity.class);
@@ -79,7 +86,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
             this.a.getClass();
             var10000.startActivityForResult(var3, 2);
             this.a.toolType = 14;
-        } else if (var2 == R.id.ds_photo_editor_btn_draw) {
+        } else if(var2 == fakeR.getId("ds_photo_editor_btn_draw")) {
             DsPhotoEditorActivity.intentResult = null;
             DsPhotoEditorDrawActivity.original = this.a.getHdBitmap();
             var3 = new Intent(this.a, DsPhotoEditorDrawActivity.class);
@@ -87,7 +94,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
             this.a.getClass();
             var10000.startActivityForResult(var3, 4);
             this.a.toolType = 12;
-        }else if(var2 == R.id.ds_photo_editor_btn_remove){
+        } else if(var2 == fakeR.getId("ds_photo_editor_btn_remove")) {
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
             builder.setMessage("Voulez vous vraiment supprimer l'image?").setPositiveButton("Oui", new android.content.DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface var1, int var2) {
