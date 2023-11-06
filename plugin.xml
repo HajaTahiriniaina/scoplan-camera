@@ -36,6 +36,7 @@
 		<source-file src="src/android/CameraSeekBarListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/CameraUtils.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/CustomI.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/FakeR.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/ImageCameraAvailableListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/OnImageCaptureListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/PhotoEditorActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
