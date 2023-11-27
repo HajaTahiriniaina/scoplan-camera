@@ -217,6 +217,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         cancelBtn2.setOnClickListener(this);
         validationButton.setOnClickListener(this);
         flashBtn.setOnClickListener(this);
+        this.defineViewVisibility();
         return view;
     }
 
@@ -410,7 +411,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             cancelBtn2.setVisibility(View.GONE);
         } else {
             souche.setVisibility(View.GONE);
-            cameraTopBar.setVisibility(View.VISIBLE);
+            cameraTopBar.setVisibility(View.GONE);
             validationButton.setVisibility(View.GONE);
             cancelBtn2.setVisibility(View.VISIBLE);
         }
@@ -455,10 +456,12 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             view.getId() == this.fakeR.getId("cancel_btn")
         ) {
             this.cancelTakePhoto();
+            this.pictures = new ArrayList<>();
         } else if(
             view.getId() == this.fakeR.getId("valid_btn")
         ) {
             this.cameraEventListener.onUserValid(this.pictures);
+            this.pictures = new ArrayList<>();
         } else if(
             view.getId() == this.fakeR.getId("flash_btn")
         ) {
