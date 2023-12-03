@@ -9,9 +9,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -44,6 +41,7 @@ import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Display;
 import android.view.LayoutInflater;
+import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -66,7 +64,7 @@ import scoplan.camera.PhotoEditorActivity;
 import scoplan.camera.CameraEventListener;
 import scoplan.camera.FakeR;
 
-public class CameraFragment extends Fragment implements scoplan.camera.OnImageCaptureListener, View.OnClickListener, SensorEventListener {
+public class CameraFragment extends Fragment implements scoplan.camera.OnImageCaptureListener, View.OnClickListener {
     public static String SCOPLAN_TAG = "SCOPLAN_TAG";
     private scoplan.camera.FakeR fakeR;
     private ImageButton camButton;
@@ -83,9 +81,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private Button cancelBtn2;
     private ImageButton flashBtn;
     private DisplayManager displayManager;
-    private SensorManager sensorManager;
-    private Sensor accelerometer;
-    private Sensor magnetometer;
+    private OrientationEventListener orientationEventListener;
     private CameraCaptureSession cameraCaptureSessions;
     private CaptureRequest.Builder captureRequestBuilder;
     private String cameraId;
@@ -98,17 +94,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private ActivityResultLauncher<Intent> activityResultLauncher;
     private CameraEventListener cameraEventListener;
     private int currentOrientation = -1;
-    private float[] mGravity;
-    private float[] mGeomagnetic;
     private boolean flashOn = false;
-
-    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-    static{
-        ORIENTATIONS.append(Surface.ROTATION_0, 90);
-        ORIENTATIONS.append(Surface.ROTATION_90, 0);
-        ORIENTATIONS.append(Surface.ROTATION_180, 270);
-        ORIENTATIONS.append(Surface.ROTATION_270, 180);
-    }
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i1) {
@@ -152,10 +138,10 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     public CameraFragment() {
         // Required empty public constructor
         activityResultLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    photoEditorCallBack(result);
-                }
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                photoEditorCallBack(result);
+            }
         );
     }
 
@@ -180,11 +166,24 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         manager = (CameraManager) getActivity().getSystemService(Context.CAMERA_SERVICE);
-        sensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
 
         displayManager = (DisplayManager) getActivity().getSystemService(Context.DISPLAY_SERVICE);
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        this.orientationEventListener = new OrientationEventListener(this.getContext(), SensorManager.SENSOR_DELAY_NORMAL) {
+            @Override
+            public void onOrientationChanged(int i) {
+                if(i != OrientationEventListener.ORIENTATION_UNKNOWN) {
+                    if(i >= 315 || i <= 45) {
+                        currentOrientation = 90; // Portrait
+                    } else if(i > 45 && i <= 135) {
+                        currentOrientation = 180;
+                    } else if(i > 135 && i <= 225) {
+                        currentOrientation = 270;
+                    } else {
+                        currentOrientation = 0;
+                    }
+                }
+            }
+        };
 
         this.fakeR = new FakeR(getContext());
     }
@@ -258,8 +257,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             if(ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
             {
                 ActivityCompat.requestPermissions(getActivity(), new String[]{
-                        Manifest.permission.CAMERA,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
                 }, CAMERA_REQUEST_PERMISSION);
                 return;
             }
@@ -289,16 +288,14 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             openCamera();
         else
             textureView.setSurfaceTextureListener(textureListener);
-        //displayManager.registerDisplayListener(displayListener, mBackgroundHandler);
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI);
-        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_UI);
+        this.orientationEventListener.enable();
     }
 
     @Override
     public void onPause() {
         stopBackgroundThread();
         super.onPause();
-        sensorManager.unregisterListener(this);
+        this.orientationEventListener.disable();
     }
 
     @Override
@@ -342,7 +339,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             Size[] jpegSizes = null;
             if(characteristics != null)
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                        .getOutputSizes(ImageFormat.JPEG);
+                    .getOutputSizes(ImageFormat.JPEG);
             //Capture image with custom size
             int width = 640;
             int height = 480;
@@ -359,7 +356,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
             captureBuilder.set(CaptureRequest.FLASH_MODE, flashOn ? CaptureRequest.FLASH_MODE_TORCH : CaptureRequest.FLASH_MODE_OFF);
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, currentOrientation);
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String fileName = "IMG_"+ timeStamp + ".jpg";
             File file = new File( this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), fileName);
@@ -424,18 +420,18 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         String pc = pictures.get(pictures.size() - 1);
         dsPhotoEditorIntent.setData(Uri.fromFile(new File(pc)));
         int[] toolsToHide = {
-                PhotoEditorActivity.TOOL_ORIENTATION,
-                PhotoEditorActivity.TOOL_FRAME,
-                PhotoEditorActivity.TOOL_FILTER,
-                PhotoEditorActivity.TOOL_ROUND,
-                PhotoEditorActivity.TOOL_EXPOSURE,
-                PhotoEditorActivity.TOOL_CONTRAST,
-                PhotoEditorActivity.TOOL_VIGNETTE,
-                PhotoEditorActivity.TOOL_SATURATION,
-                PhotoEditorActivity.TOOL_SHARPNESS,
-                PhotoEditorActivity.TOOL_WARMTH,
-                PhotoEditorActivity.TOOL_PIXELATE,
-                PhotoEditorActivity.TOOL_STICKER
+            PhotoEditorActivity.TOOL_ORIENTATION,
+            PhotoEditorActivity.TOOL_FRAME,
+            PhotoEditorActivity.TOOL_FILTER,
+            PhotoEditorActivity.TOOL_ROUND,
+            PhotoEditorActivity.TOOL_EXPOSURE,
+            PhotoEditorActivity.TOOL_CONTRAST,
+            PhotoEditorActivity.TOOL_VIGNETTE,
+            PhotoEditorActivity.TOOL_SATURATION,
+            PhotoEditorActivity.TOOL_SHARPNESS,
+            PhotoEditorActivity.TOOL_WARMTH,
+            PhotoEditorActivity.TOOL_PIXELATE,
+            PhotoEditorActivity.TOOL_STICKER
         };
         dsPhotoEditorIntent.putExtra(DsPhotoEditorConstants.DS_PHOTO_EDITOR_TOOLS_TO_HIDE, toolsToHide);
         activityResultLauncher.launch(dsPhotoEditorIntent);
@@ -447,13 +443,13 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             this.takePicture();
         } else if(
             view.getId() == this.fakeR.getId("draw_on_2") ||
-            view.getId() == this.fakeR.getId("image_souche") ||
-            view.getId() == this.fakeR.getId("draw_on")
+                view.getId() == this.fakeR.getId("image_souche") ||
+                view.getId() == this.fakeR.getId("draw_on")
         ) {
             this.startDrawing();
         } else if(
             view.getId() == this.fakeR.getId("cancel") ||
-            view.getId() == this.fakeR.getId("cancel_btn")
+                view.getId() == this.fakeR.getId("cancel_btn")
         ) {
             this.cancelTakePhoto();
             this.pictures = new ArrayList<>();
@@ -473,51 +469,17 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private void cancelTakePhoto() {
         AlertDialog.Builder alert = new AlertDialog.Builder(getContext());
         alert.setMessage("Voulez-vous sortir sans enregistrer la photo")
-                .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        cameraEventListener.onUserCancel();
-                    }
-                })
-                .setNegativeButton("Non", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                    }
-                });
-        alert.create().show();
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-            mGravity = event.values;
-        if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
-            mGeomagnetic = event.values;
-        if (mGravity != null && mGeomagnetic != null) {
-            float R[] = new float[9];
-            float I[] = new float[9];
-            boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
-            if (success) {
-                float orientation[] = new float[3];
-                SensorManager.getOrientation(R, orientation);
-                double azimuth = (Math.toDegrees(orientation[0])) + 180;
-                if (azimuth >= 45 && azimuth < 135) {
-                    currentOrientation = 90; // 90 degrees (landscape)
-                } else if (azimuth >= 135 && azimuth < 225) {
-                    currentOrientation = 180; // 180 degrees (reverse portrait)
-                } else if (azimuth >= 225 && azimuth < 315) {
-                    currentOrientation = 270; // 270 degrees (reverse landscape)
-                } else {
-                    currentOrientation = 0; // 0 degrees (portrait)
+            .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    cameraEventListener.onUserCancel();
                 }
-                currentOrientation += 180;
-                currentOrientation = currentOrientation % 360;
-            }
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-
+            })
+            .setNegativeButton("Non", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                }
+            });
+        alert.create().show();
     }
 }

@@ -19,15 +19,12 @@ public class ImageCameraAvailableListener implements ImageReader.OnImageAvailabl
     private File file;
     private scoplan.camera.OnImageCaptureListener imageCaptureListener;
     private float rotation;
-    private Matrix matrix;
 
     public ImageCameraAvailableListener(File file, ImageReader reader, scoplan.camera.OnImageCaptureListener onImageCaptureListener, float rotation) {
         this.reader = reader;
         this.file = file;
         this.imageCaptureListener = onImageCaptureListener;
         this.rotation = rotation;
-        matrix = new Matrix();
-        matrix.setRotate(this.rotation);
     }
     @Override
     public void onImageAvailable(ImageReader imageReader) {
@@ -60,6 +57,8 @@ public class ImageCameraAvailableListener implements ImageReader.OnImageAvailabl
         try{
             outputStream = new FileOutputStream(file);
             Bitmap bmp = BitmapFactory.decodeByteArray(bytes,0, bytes.length);
+            Matrix matrix = new Matrix();
+            matrix.setRotate(this.rotation);
             Bitmap rotatedBitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
             rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream);
             return rotatedBitmap;
