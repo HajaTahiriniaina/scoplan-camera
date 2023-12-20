@@ -1,4 +1,5 @@
 #import <Cordova/CDV.h>
+@class UIScoplanCamera;
 
 @interface ScoplanCamera : CDVPlugin {
     UIScoplanCamera *mCamview;
@@ -13,4 +14,5 @@
 - (void)setPreview:(UIImage*)img;
 - (void)addDrawSel:(SEL)selector;
 - (void)resetAll;
+- (void)removeLastPreview;
 @end

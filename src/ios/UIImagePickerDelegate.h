@@ -7,5 +7,5 @@
 @class ScoplanCamera;
 @interface UIImagePickerDelegate : NSObject<UIImagePickerControllerDelegate,UINavigationControllerDelegate>{
 }
-- (void) setCam:(CameraMultiple *) cam;
+- (void) setCam:(ScoplanCamera *) cam;
 @end

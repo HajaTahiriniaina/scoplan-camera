@@ -25,6 +25,8 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
 
     private CallbackContext callbackContext;
     private CameraFragment cameraFragment;
+
+    private FrameLayout containerView;
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         this.callbackContext = callbackContext;
@@ -41,7 +43,7 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
         cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                FrameLayout containerView = (FrameLayout)cordova.getActivity().findViewById(containerViewId);
+                containerView = (FrameLayout)cordova.getActivity().findViewById(containerViewId);
                 if(containerView == null){
                     containerView = new FrameLayout(cordova.getActivity().getApplicationContext());
                     containerView.setId(containerViewId);
@@ -49,6 +51,7 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
                     cordova.getActivity().addContentView(containerView, containerLayoutParams);
                     //add the fragment to the container
                 }
+                containerView.setClickable(true);
                 cameraFragment = new CameraFragment();
                 cameraFragment.setCameraEventListener(cameraEventListener);
                 FragmentManager manager = cordova.getActivity().getSupportFragmentManager();
@@ -76,6 +79,9 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
     }
 
     public void closeCamera() {
+        if(containerView != null) {
+            containerView.setClickable(false);
+        }
         FragmentManager manager = cordova.getActivity().getSupportFragmentManager();
         FragmentTransaction transaction = manager.beginTransaction();
         if(cameraFragment != null) {

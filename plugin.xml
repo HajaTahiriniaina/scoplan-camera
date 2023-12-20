@@ -87,5 +87,28 @@
         <resource-file src="src/ios/ScoplanCamera.storyboard"/>
         <resource-file src="src/ios/camsicons.xcassets"/>
         <resource-file src="src/ios/DSPhotoEditorSDK.framework"/>
+        <resource-file src="src/ios/Resources/ds_btn_calc.png"/>
+        <resource-file src="src/ios/Resources/ds_btn_crop.png"/>
+        <resource-file src="src/ios/Resources/ds_btn_del.png"/>
+        <resource-file src="src/ios/Resources/ds_btn_draw.png"/>
+        <resource-file src="src/ios/Resources/ds_btn_text.png"/>
+        <resource-file src="src/ios/Resources/measure_0.png"/>
+        <resource-file src="src/ios/Resources/measure_1.png"/>
+        <resource-file src="src/ios/Resources/measure_10.png"/>
+        <resource-file src="src/ios/Resources/measure_11.png"/>
+        <resource-file src="src/ios/Resources/measure_2.png"/>
+        <resource-file src="src/ios/Resources/measure_3.png"/>
+        <resource-file src="src/ios/Resources/measure_4.png"/>
+        <resource-file src="src/ios/Resources/measure_5.png"/>
+        <resource-file src="src/ios/Resources/measure_6.png"/>
+        <resource-file src="src/ios/Resources/measure_7.png"/>
+        <resource-file src="src/ios/Resources/measure_8.png"/>
+        <resource-file src="src/ios/Resources/measure_9.png"/>
+        <resource-file src="src/ios/Resources/no.png"/>
+        <resource-file src="src/ios/Resources/ok.png"/>
+        <resource-file src="src/ios/Resources/toward_arrows.png"/>
+        <resource-file src="src/ios/Resources/Overlay.png"/>
+        <resource-file src="src/ios/Resources/Overlay@2x.png"/>
+        <resource-file src="src/ios/Resources/back_arrows.png"/>
 	</platform>
 </plugin>
