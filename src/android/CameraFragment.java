@@ -59,6 +59,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import io.sentry.Sentry;
 import scoplan.camera.CameraUtils;
 import scoplan.camera.PhotoEditorActivity;
 import scoplan.camera.CameraEventListener;
@@ -95,6 +96,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private CameraEventListener cameraEventListener;
     private int currentOrientation = -1;
     private boolean flashOn = false;
+    private boolean cameraIsOpen = false;
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i1) {
@@ -108,6 +110,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
+            Sentry.captureMessage("Surface destroy");
             return false;
         }
 
@@ -120,18 +123,21 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
             cameraDevice = camera;
+            cameraIsOpen = true;
             createCameraPreview();
         }
 
         @Override
         public void onDisconnected(@NonNull CameraDevice cameraDevice) {
             cameraDevice.close();
+            cameraIsOpen = false;
         }
 
         @Override
         public void onError(@NonNull CameraDevice cameraDevice, int i) {
             cameraDevice.close();
             cameraDevice = null;
+            cameraIsOpen = false;
         }
     };
 
@@ -223,6 +229,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private void createCameraPreview() {
         if(cameraDevice == null || !textureView.isAvailable())
             return;
+        if(!cameraIsOpen) {
+            this.openCamera();
+        }
         try{
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             Surface surface = new Surface(CameraUtils.buildTargetTexture(textureView, characteristics, displayManager.getDisplay(Display.DEFAULT_DISPLAY).getRotation()));
@@ -239,11 +248,11 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    Log.e(SCOPLAN_TAG, "Something failed");
+                    Sentry.captureMessage(cameraCaptureSession.toString());
                 }
             },null);
         } catch (CameraAccessException e) {
-            Log.e(SCOPLAN_TAG, "Error", e);
+            Sentry.captureException(e);
         }
     }
 
@@ -264,7 +273,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             }
             manager.openCamera(cameraId, stateCallback,null);
         } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Sentry.captureException(e);
         }
     }
 
@@ -276,7 +285,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(),null, mBackgroundHandler);
             this.cameraSeekBarListener = new scoplan.camera.CameraSeekBarListener(cameraId, manager, zoomBar, captureRequestBuilder, cameraCaptureSessions, mBackgroundHandler);
         } catch (CameraAccessException e) {
-            Log.e(SCOPLAN_TAG, "Error", e);
+            Sentry.captureException(e);
         }
     }
 
@@ -301,13 +310,13 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     @Override
     public void onDestroy() {
         super.onDestroy();
-        //displayManager.unregisterDisplayListener(displayListener);
         release();
     }
 
     private void release() {
         if(cameraDevice != null) {
             cameraDevice.close();
+            cameraIsOpen = false;
         }
     }
 
@@ -386,6 +395,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             }, mBackgroundHandler);
 
         } catch (CameraAccessException e) {
+            Sentry.captureException(e);
             throw new RuntimeException(e);
         }
     }
