@@ -110,7 +110,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
-            Sentry.captureMessage("Surface destroy");
             return false;
         }
 
