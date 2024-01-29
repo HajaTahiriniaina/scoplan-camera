@@ -3,15 +3,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/shape_rectangle">
-    <FrameLayout
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        >
-        <TextureView
+    <LinearLayout
+        android:id="@+id/camera_frame_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+        <scoplan.camera.AutoFitSurfaceView
             android:id="@+id/cameraView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
-    </FrameLayout>
+    </LinearLayout>
     <FrameLayout
         android:id="@+id/camera_zoom_view"
         android:layout_width="fill_parent"

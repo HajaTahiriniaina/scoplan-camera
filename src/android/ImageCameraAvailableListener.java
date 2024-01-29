@@ -60,7 +60,7 @@ public class ImageCameraAvailableListener implements ImageReader.OnImageAvailabl
             Matrix matrix = new Matrix();
             matrix.setRotate(this.rotation);
             Bitmap rotatedBitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
-            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream);
+            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 65, outputStream);
             return rotatedBitmap;
         } finally {
             if(outputStream != null)

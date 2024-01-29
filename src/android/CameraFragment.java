@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.SensorManager;
@@ -19,9 +20,9 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
-import android.hardware.display.DisplayManager;
 import android.media.ImageReader;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.dsphotoeditor.sdk.utils.DsPhotoEditorConstants;
@@ -38,17 +39,18 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
-import android.util.SparseIntArray;
-import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.OrientationEventListener;
 import android.view.Surface;
-import android.view.TextureView;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 
@@ -72,7 +74,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private SeekBar zoomBar;
     private Button validationButton;
     private ProgressBar progressBar;
-    private TextureView textureView;
+    private SurfaceView surfaceView;
     private CameraDevice cameraDevice;
     private View cameraTopBar;
     private ImageView souche;
@@ -81,7 +83,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private ImageButton cancelBtn;
     private Button cancelBtn2;
     private ImageButton flashBtn;
-    private DisplayManager displayManager;
     private OrientationEventListener orientationEventListener;
     private CameraCaptureSession cameraCaptureSessions;
     private CaptureRequest.Builder captureRequestBuilder;
@@ -97,24 +98,28 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private int currentOrientation = -1;
     private boolean flashOn = false;
     private boolean cameraIsOpen = false;
-    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
+
+    private SurfaceHolder mSurfaceHolder;
+
+    private boolean surfaceAvailable = false;
+    private LinearLayout cameraFrameLayout;
+
+    private final SurfaceHolder.Callback surfaceHolderCallBack = new SurfaceHolder.Callback() {
         @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i1) {
+        public void surfaceCreated(@NonNull SurfaceHolder surfaceHolder) {
+            surfaceAvailable = true;
             openCamera();
         }
 
         @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int i, int i1) {
+        public void surfaceChanged(@NonNull SurfaceHolder surfaceHolder, int i, int i1, int i2) {
             createCameraPreview();
         }
 
         @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
+        public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
+            //TODO close
+            surfaceAvailable = false;
         }
     };
 
@@ -172,7 +177,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         super.onCreate(savedInstanceState);
         manager = (CameraManager) getActivity().getSystemService(Context.CAMERA_SERVICE);
 
-        displayManager = (DisplayManager) getActivity().getSystemService(Context.DISPLAY_SERVICE);
         this.orientationEventListener = new OrientationEventListener(this.getContext(), SensorManager.SENSOR_DELAY_NORMAL) {
             @Override
             public void onOrientationChanged(int i) {
@@ -202,11 +206,14 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         zoomBar = view.findViewById(this.fakeR.getId("camera_zoom"));
         validationButton = view.findViewById(this.fakeR.getId("valid_btn"));
         progressBar = view.findViewById(this.fakeR.getId("progressBar"));
-        textureView = view.findViewById(this.fakeR.getId("cameraView"));
+        cameraFrameLayout = view.findViewById(this.fakeR.getId("camera_frame_layout"));
+        cameraFrameLayout.setBackgroundColor(Color.rgb(0, 0, 0));
+        surfaceView = view.findViewById(this.fakeR.getId("cameraView"));
         drawOn2 = view.findViewById(this.fakeR.getId("draw_on_2"));
         drawOn = view.findViewById(this.fakeR.getId("draw_on"));
-        assert textureView != null;
-        textureView.setSurfaceTextureListener(textureListener);
+        assert surfaceView != null;
+        mSurfaceHolder = surfaceView.getHolder();
+        mSurfaceHolder.addCallback(surfaceHolderCallBack);
         souche = view.findViewById(this.fakeR.getId("image_souche"));
         cameraTopBar = view.findViewById(this.fakeR.getId("cameraTopBar"));
         cancelBtn = view.findViewById(this.fakeR.getId("cancel"));
@@ -226,14 +233,13 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void createCameraPreview() {
-        if(cameraDevice == null || !textureView.isAvailable())
+        if(cameraDevice == null || !surfaceAvailable)
             return;
         if(!cameraIsOpen) {
             this.openCamera();
         }
         try{
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-            Surface surface = new Surface(CameraUtils.buildTargetTexture(textureView, characteristics, displayManager.getDisplay(Display.DEFAULT_DISPLAY).getRotation()));
+            Surface surface = mSurfaceHolder.getSurface();
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
@@ -257,6 +263,15 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     private void openCamera() {
         try{
+            for (String id : manager.getCameraIdList()) {
+                CameraCharacteristics cameraCharacteristics =
+                    manager.getCameraCharacteristics(id);
+                if (cameraCharacteristics.get(cameraCharacteristics.LENS_FACING) ==
+                    CameraCharacteristics.LENS_FACING_BACK) {
+                    cameraId = id;
+                    break;
+                }
+            }
             cameraId = manager.getCameraIdList()[0];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -266,7 +281,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             {
                 ActivityCompat.requestPermissions(getActivity(), new String[]{
                     Manifest.permission.CAMERA,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ? Manifest.permission.WRITE_EXTERNAL_STORAGE : Manifest.permission.READ_MEDIA_IMAGES
                 }, CAMERA_REQUEST_PERMISSION);
                 return;
             }
@@ -276,11 +291,44 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         }
     }
 
+    private Size chooseOptimalSize(Size[] sizes, int desiredWidth, int desiredHeight) {
+        // Choose the smallest size that is at least as large as the desired size
+        for (Size size : sizes) {
+            if (size.getWidth() >= desiredWidth && size.getHeight() >= desiredHeight) {
+                return size;
+            }
+        }
+
+        // If no size is large enough, choose the largest available size
+        return sizes[sizes.length - 1];
+    }
+
     private void updatePreview() {
         if(cameraDevice == null)
             Log.e(SCOPLAN_TAG, "Error camera");
         captureRequestBuilder.set(CaptureRequest.CONTROL_MODE,CaptureRequest.CONTROL_MODE_AUTO);
         try{
+            CameraCharacteristics cameraCharacteristics =
+                manager.getCameraCharacteristics(cameraId);
+            StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            if(map != null) {
+                Size[] outputSizes = map.getOutputSizes(SurfaceTexture.class);
+                for(Size size : outputSizes) {
+                    Log.e(SCOPLAN_TAG + "_Size", size.getWidth() + ":" + size.getHeight());
+                }
+                Log.e(SCOPLAN_TAG + "_parent", cameraFrameLayout.getWidth() + ":" + cameraFrameLayout.getHeight());
+                Size preferredSize = selectedPreviewSize(outputSizes);
+                if(preferredSize != null) {
+                    ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
+                    Size surfaceSize = calculateSurfaceSize(preferredSize);
+                    layoutParams.width = surfaceSize.getWidth();
+                    layoutParams.height = surfaceSize.getHeight();
+                    getActivity().runOnUiThread(() -> {
+                        mSurfaceHolder.setFixedSize(surfaceSize.getWidth(), surfaceSize.getHeight());
+                        surfaceView.setLayoutParams(layoutParams);
+                    });
+                }
+            }
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(),null, mBackgroundHandler);
             this.cameraSeekBarListener = new scoplan.camera.CameraSeekBarListener(cameraId, manager, zoomBar, captureRequestBuilder, cameraCaptureSessions, mBackgroundHandler);
         } catch (CameraAccessException e) {
@@ -288,14 +336,40 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         }
     }
 
+    private Size calculateSurfaceSize(Size selectedSize) {
+        Log.e(SCOPLAN_TAG + "_Selected", selectedSize.getWidth() + ":" + selectedSize.getHeight());
+        int parentWidth = this.cameraFrameLayout.getWidth();
+        Size correctSize = new Size(selectedSize.getHeight(), selectedSize.getWidth()); // We are in portrait mode
+
+        float aspectRatio = (float) correctSize.getWidth() / correctSize.getHeight();
+
+        int height = (int) (parentWidth / aspectRatio);
+        return new Size(parentWidth, height);
+    }
+
+    private Size selectedPreviewSize(Size[] outputSizes) {
+        float targetAspectRatio = 1f; // For example, 16:9 aspect ratio
+        // Choose a suitable size from outputSizes based on the aspect ratio
+        Size selectedSize = null;
+        for (Size size : outputSizes) {
+            float aspectRatio = (float) size.getWidth() / size.getHeight();
+            if (Math.abs(aspectRatio - targetAspectRatio) < 0.1) {
+                selectedSize = size;
+                break;
+            }
+        }
+        return selectedSize;
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         startBackgroundThread();
-        if(textureView.isAvailable())
+        if(surfaceAvailable)
             openCamera();
-        else
-            textureView.setSurfaceTextureListener(textureListener);
+        else {
+            mSurfaceHolder.addCallback(surfaceHolderCallBack);
+        }
         this.orientationEventListener.enable();
     }
 
@@ -359,7 +433,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             final ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG,1);
             List<Surface> outputSurface = new ArrayList<>(2);
             outputSurface.add(reader.getSurface());
-            outputSurface.add(new Surface(textureView.getSurfaceTexture()));
+            outputSurface.add(mSurfaceHolder.getSurface());
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
