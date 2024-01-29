@@ -321,9 +321,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 if(preferredSize != null) {
                     ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
                     Size surfaceSize = calculateSurfaceSize(preferredSize);
-                    layoutParams.width = surfaceSize.getWidth();
-                    layoutParams.height = surfaceSize.getHeight();
                     getActivity().runOnUiThread(() -> {
+                        layoutParams.width = surfaceSize.getWidth();
+                        layoutParams.height = surfaceSize.getHeight();
                         mSurfaceHolder.setFixedSize(surfaceSize.getWidth(), surfaceSize.getHeight());
                         surfaceView.setLayoutParams(layoutParams);
                     });
