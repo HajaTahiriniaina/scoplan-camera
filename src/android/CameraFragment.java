@@ -378,12 +378,18 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         stopBackgroundThread();
         super.onPause();
         this.orientationEventListener.disable();
+        if(cameraDevice != null) {
+            cameraDevice.close();
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         release();
+        if(cameraDevice != null) {
+            cameraDevice.close();
+        }
     }
 
     private void release() {
