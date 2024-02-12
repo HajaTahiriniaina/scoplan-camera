@@ -19,8 +19,6 @@
 			<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION " />
 			<uses-feature android:name="android.hardware.camera" android:required="false" />
-			<uses-feature android:name="android.hardware.sensor.accelerometer" />
-			<uses-feature android:name="android.hardware.sensor.compass" />
 		</config-file>
 		<config-file parent="/manifest/application" target="AndroidManifest.xml">
 			<activity android:name="scoplan.camera.PhotoEditorActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
