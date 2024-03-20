@@ -17,6 +17,7 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
@@ -53,6 +54,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
+import android.widget.Toast;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -120,6 +122,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
             //TODO close
             surfaceAvailable = false;
+            release();
         }
     };
 
@@ -135,13 +138,13 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         public void onDisconnected(@NonNull CameraDevice cameraDevice) {
             cameraDevice.close();
             cameraIsOpen = false;
+            release();
         }
 
         @Override
         public void onError(@NonNull CameraDevice cameraDevice, int i) {
             cameraDevice.close();
-            cameraDevice = null;
-            cameraIsOpen = false;
+            release();
         }
     };
 
@@ -313,10 +316,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             if(map != null) {
                 Size[] outputSizes = map.getOutputSizes(SurfaceTexture.class);
-                for(Size size : outputSizes) {
-                    Log.e(SCOPLAN_TAG + "_Size", size.getWidth() + ":" + size.getHeight());
-                }
-                Log.e(SCOPLAN_TAG + "_parent", cameraFrameLayout.getWidth() + ":" + cameraFrameLayout.getHeight());
                 Size preferredSize = selectedPreviewSize(outputSizes);
                 if(preferredSize != null) {
                     ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
@@ -337,7 +336,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private Size calculateSurfaceSize(Size selectedSize) {
-        Log.e(SCOPLAN_TAG + "_Selected", selectedSize.getWidth() + ":" + selectedSize.getHeight());
         int parentWidth = this.cameraFrameLayout.getWidth();
         Size correctSize = new Size(selectedSize.getHeight(), selectedSize.getWidth()); // We are in portrait mode
 
@@ -378,24 +376,20 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         stopBackgroundThread();
         super.onPause();
         this.orientationEventListener.disable();
-        if(cameraDevice != null) {
-            cameraDevice.close();
-        }
+        release();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         release();
-        if(cameraDevice != null) {
-            cameraDevice.close();
-        }
     }
 
     private void release() {
         if(cameraDevice != null) {
             cameraDevice.close();
             cameraIsOpen = false;
+            cameraDevice = null;
         }
     }
 
@@ -417,6 +411,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void takePicture() {
+        if(this.mBackgroundThread == null || !this.mBackgroundThread.isInterrupted() || !this.mBackgroundThread.isAlive()) {
+            this.startBackgroundThread();
+        }
         if(cameraDevice == null) {
             return;
         }
@@ -456,6 +453,14 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     super.onCaptureCompleted(session, request, result);
                     createCameraPreview();
                 }
+
+                @Override
+                public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
+                    super.onCaptureFailed(session, request, failure);
+                    Sentry.captureMessage("Failed capture _" + failure.getReason());
+                    Log.e(SCOPLAN_TAG, "Error FAILED Capture " + failure.getReason());
+                    failedCapture();
+                }
             };
 
             cameraDevice.createCaptureSession(outputSurface, new CameraCaptureSession.StateCallback() {
@@ -464,12 +469,17 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     try{
                         cameraCaptureSession.capture(captureBuilder.build(), captureListener, mBackgroundHandler);
                     } catch (CameraAccessException e) {
-                        Log.e(SCOPLAN_TAG, "Error", e);
+                        Log.e(SCOPLAN_TAG, "Error - " + e.getMessage());
+                        Sentry.captureException(e);
+                        failedCapture();
                     }
                 }
 
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
+                    Log.e(SCOPLAN_TAG, "Error FAILED Configuration ");
+                    Sentry.captureMessage("Failed configure cameraCaptureSession");
+                    failedCapture();
                 }
             }, mBackgroundHandler);
 
@@ -484,6 +494,20 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         pictures.add(file.getAbsolutePath());
         getActivity().runOnUiThread(() -> {
             souche.setImageBitmap(bitmap);
+            defineViewVisibility();
+        });
+    }
+
+    @Override
+    public void onImageBuildFailed(Exception e) {
+        Sentry.captureException(e);
+        failedCapture();
+    }
+
+    public void failedCapture() {
+        Toast toast = Toast.makeText(getContext(), "Oups! une erreur pendant la capture. Veuillez rééssayer.", Toast.LENGTH_LONG);
+        toast.show();
+        getActivity().runOnUiThread(() -> {
             defineViewVisibility();
         });
     }

@@ -36,13 +36,10 @@ public class ImageCameraAvailableListener implements ImageReader.OnImageAvailabl
             buffer.get(bytes);
             this.imageCaptureListener.onImageCapture(file, save(bytes));
         }
-        catch (FileNotFoundException e)
-        {
-            e.printStackTrace();
-        }
         catch (IOException e)
         {
             e.printStackTrace();
+            this.imageCaptureListener.onImageBuildFailed(e);
         }
         finally {
             {
