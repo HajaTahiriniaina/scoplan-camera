@@ -259,8 +259,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     Sentry.captureMessage(cameraCaptureSession.toString());
                 }
             },null);
-        } catch (CameraAccessException e) {
+        } catch (Exception e) {
             Sentry.captureException(e);
+            this.failedCapture();
         }
     }
 
@@ -289,8 +290,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 return;
             }
             manager.openCamera(cameraId, stateCallback,null);
-        } catch (CameraAccessException e) {
+        } catch (Exception e) {
             Sentry.captureException(e);
+            this.failedCapture();
         }
     }
 
@@ -330,8 +332,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             }
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(),null, mBackgroundHandler);
             this.cameraSeekBarListener = new scoplan.camera.CameraSeekBarListener(cameraId, manager, zoomBar, captureRequestBuilder, cameraCaptureSessions, mBackgroundHandler);
-        } catch (CameraAccessException e) {
+        } catch (Exception e) {
             Sentry.captureException(e);
+            this.failedCapture();
         }
     }
 
@@ -468,7 +471,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
                     try{
                         cameraCaptureSession.capture(captureBuilder.build(), captureListener, mBackgroundHandler);
-                    } catch (CameraAccessException e) {
+                    } catch (Exception e) {
                         Log.e(SCOPLAN_TAG, "Error - " + e.getMessage());
                         Sentry.captureException(e);
                         failedCapture();
@@ -483,7 +486,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 }
             }, mBackgroundHandler);
 
-        } catch (CameraAccessException e) {
+        } catch (Exception e) {
             Sentry.captureException(e);
             throw new RuntimeException(e);
         }
