@@ -40,6 +40,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.OrientationEventListener;
 import android.view.Surface;
@@ -95,6 +96,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private scoplan.camera.CameraSeekBarListener cameraSeekBarListener;
     private CameraManager manager;
     private List<String> pictures = new ArrayList<String>();
+    private int pictureCount = 0;
+    private int photoLimit = 15;
     private ActivityResultLauncher<Intent> activityResultLauncher;
     private CameraEventListener cameraEventListener;
     private int currentOrientation = -1;
@@ -413,13 +416,27 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
 
+    public void setPhotoLimit(int limit){
+        this.photoLimit = limit;
+    }
+
+    public void setCurrentCount(int currentCount){
+        this.pictureCount = currentCount;
+    }
+
     private void takePicture() {
+        if(this.pictureCount >= this.photoLimit){
+            Toast toast = Toast.makeText(this.getContext(), "La prise de photos est limitée à " + this.photoLimit + " par envoi", Toast.LENGTH_SHORT);
+            toast.show();
+            return;
+        }
         if(this.mBackgroundThread == null || !this.mBackgroundThread.isInterrupted() || !this.mBackgroundThread.isAlive()) {
             this.startBackgroundThread();
         }
         if(cameraDevice == null) {
             return;
         }
+        this.pictureCount++;
         camButton.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         try {

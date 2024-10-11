@@ -30,14 +30,16 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         this.callbackContext = callbackContext;
+        int limit = args.getJSONObject(0).getInt("photoLimit");
+        int currentCount = args.getJSONObject(1).getInt("currentCount");
         if (action.equals("takePictures")) {
-            this.takePictures();
+            this.takePictures(limit, currentCount);
             return true;
         }
         return false;
     }
 
-    private void takePictures() {
+    private void takePictures(int limit, int currentCount) {
         cordova.getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         CameraEventListener cameraEventListener = this;
         cordova.getActivity().runOnUiThread(new Runnable() {
@@ -53,6 +55,10 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
                 }
                 containerView.setClickable(true);
                 cameraFragment = new CameraFragment();
+                if(currentCount > 0){
+                    cameraFragment.setCurrentCount(currentCount);
+                }
+                cameraFragment.setPhotoLimit(limit);
                 cameraFragment.setCameraEventListener(cameraEventListener);
                 FragmentManager manager = cordova.getActivity().getSupportFragmentManager();
                 FragmentTransaction transaction = manager.beginTransaction();
