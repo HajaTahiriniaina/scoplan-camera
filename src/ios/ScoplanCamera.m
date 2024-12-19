@@ -8,6 +8,8 @@
     @property (nonatomic)  UIImagePickerDelegate * pickerdelegate;
     @property (nonatomic) UIView * overLayView;
     @property (nonatomic) UICustomPickerController *cameraUI;
+    @property int photoLimit;
+    @property int currentCount;
 @end
 
 @implementation ScoplanCamera
@@ -43,9 +45,22 @@
     [self dismisCam];
 }
 
+- (void) ShowAlert:(NSString *)Message {
+    UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Attention" message:Message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"Ok" style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
+        [alert dismissViewControllerAnimated:YES completion:nil];
+        [self dismisCam];
+    }];
+    [alert addAction:okAction];
+    [self.cameraUI presentViewController:alert animated:YES completion:nil];
+}
+
 -(void)takenClicked:(id)sender{
-    NSLog(@"shoot");
-    [self shoot];
+    if(mpictures.count + self.currentCount == self.photoLimit) {
+        [self ShowAlert:[NSString stringWithFormat:@"La prise de photos est limitée à %d par envoi", self.photoLimit]];
+    } else {
+        [self shoot];
+    }
 }
 
 -(void)setPreview:(UIImage*)img{
@@ -91,6 +106,12 @@
 }
 
 - (void) takePictures:(CDVInvokedUrlCommand*)command {
+    NSDictionary *options = [command.arguments objectAtIndex:0];
+    self.photoLimit = [options[@"photoLimit"] intValue];
+    NSDictionary *options2 = [command.arguments objectAtIndex:1];
+    self.currentCount = [options2[@"currentCount"] intValue];
+//    NSLog([NSString stringWithFormat:@"photoLimit : %d", self.photoLimit]);
+//    NSLog([NSString stringWithFormat:@"currentCount : %d", self.currentCount]);
     [[UIDevice currentDevice] setValue:
      [NSNumber numberWithInteger: UIInterfaceOrientationPortrait]
                                 forKey:@"orientation"];
