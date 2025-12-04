@@ -14,9 +14,6 @@ import org.json.JSONException;
 
 import java.util.List;
 
-import scoplan.camera.CameraEventListener;
-import scoplan.camera.CameraFragment;
-
 /**
  * This class echoes a string called from JavaScript.
  */
@@ -62,7 +59,9 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
                 cameraFragment.setCameraEventListener(cameraEventListener);
                 FragmentManager manager = cordova.getActivity().getSupportFragmentManager();
                 FragmentTransaction transaction = manager.beginTransaction();
-                transaction.add(containerViewId, cameraFragment);
+                transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+                transaction.replace(android.R.id.content, cameraFragment); // use root content
+                transaction.addToBackStack(null);
                 transaction.commit();
             }
         });

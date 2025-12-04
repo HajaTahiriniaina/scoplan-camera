@@ -3,10 +3,8 @@ package scoplan.camera;
 import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraMetadata;
 import android.os.Build;
 import android.util.Size;
-import android.view.SurfaceView;
 import android.view.TextureView;
 
 import java.util.ArrayList;

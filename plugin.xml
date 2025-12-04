@@ -16,7 +16,6 @@
 		<config-file parent="/manifest" target="AndroidManifest.xml">
 			<uses-permission android:name="android.permission.CAMERA" />
 			<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-			<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION " />
 			<uses-feature android:name="android.hardware.camera" android:required="false" />
 		</config-file>
@@ -28,6 +27,9 @@
 			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorTextActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" android:windowSoftInputMode="adjustPan" />
 			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorCropActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
 			<activity android:name="com.dsphotoeditor.sdk.activity.DsPhotoEditorDrawActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar" />
+			<activity android:name="scoplan.camera.CDrawActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar"/>
+			<activity android:name="scoplan.camera.CTextActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar"/>
+			<activity android:name="scoplan.camera.CCropActivity" android:screenOrientation="portrait" android:theme="@android:style/Theme.Holo.NoActionBar"/>
 		</config-file>
 		<source-file src="src/android/CameraEventListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/CameraFragment.java" target-dir="src/scoplan/camera/ScoplanCamera" />
@@ -43,6 +45,9 @@
 		<source-file src="src/android/PhotoEditorStore.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/ScoplanCamera.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/AutoFitSurfaceView.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CCropActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CDrawActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+		<source-file src="src/android/CTextActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<resource-file src="src/android/res/drawable/back_arrow.xml" target="res/drawable/back_arrow.xml" />
 		<resource-file src="src/android/res/drawable/camsicon.png" target="res/drawable/camsicon.png" />
 		<resource-file src="src/android/res/drawable/custom_spinner.xml" target="res/drawable/custom_spinner.xml" />

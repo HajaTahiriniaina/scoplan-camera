@@ -21,9 +21,6 @@ import com.dsphotoeditor.sdk.activity.DsPhotoEditorCropActivity;
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorDrawActivity;
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorTextActivity;
 
-import scoplan.camera.PhotoEditorMesureCustomActivity;
-import scoplan.camera.FakeR;
-
 public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
 
     // TODO: Rename parameter arguments, choose names that match
@@ -65,7 +62,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
         if(var2 == fakeR.getId("ds_photo_editor_btn_crop")) {
             DsPhotoEditorActivity.intentResult = null;
             DsPhotoEditorCropActivity.original = this.a.getHdBitmap();
-            var3 = new Intent(this.a, DsPhotoEditorCropActivity.class);
+            var3 = new Intent(this.a, CCropActivity.class);
             var10000 = this.a;
             this.a.getClass();
             var10000.startActivityForResult(var3, 3);
@@ -81,7 +78,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
         } else if(var2 == fakeR.getId("ds_photo_editor_btn_text")) {
             DsPhotoEditorActivity.intentResult = null;
             DsPhotoEditorTextActivity.original = this.a.getHdBitmap();
-            var3 = new Intent(this.a, DsPhotoEditorTextActivity.class);
+            var3 = new Intent(this.a, CTextActivity.class);
             var10000 = this.a;
             this.a.getClass();
             var10000.startActivityForResult(var3, 2);
@@ -89,7 +86,7 @@ public class PhotoEditorMenu extends Fragment implements View.OnClickListener {
         } else if(var2 == fakeR.getId("ds_photo_editor_btn_draw")) {
             DsPhotoEditorActivity.intentResult = null;
             DsPhotoEditorDrawActivity.original = this.a.getHdBitmap();
-            var3 = new Intent(this.a, DsPhotoEditorDrawActivity.class);
+            var3 = new Intent(this.a, CDrawActivity.class);
             var10000 = this.a;
             this.a.getClass();
             var10000.startActivityForResult(var3, 4);

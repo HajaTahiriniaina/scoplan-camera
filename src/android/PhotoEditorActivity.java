@@ -2,6 +2,7 @@ package scoplan.camera;
 
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -16,9 +17,6 @@ import com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity;
 
 import java.io.File;
 
-import scoplan.camera.FakeR;
-import scoplan.camera.PhotoEditorMenu;
-
 public class PhotoEditorActivity extends DsPhotoEditorActivity {
     private Uri e;
 
@@ -26,6 +24,9 @@ public class PhotoEditorActivity extends DsPhotoEditorActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Context context = getApplicationContext();
+        int themeId = context.getResources().getIdentifier("AppTheme.NoActionBar", "style", context.getPackageName());
+        setTheme(themeId);
         super.onCreate(savedInstanceState);
         this.fakeR = new FakeR(this);
         this.e = this.getIntent().getData();

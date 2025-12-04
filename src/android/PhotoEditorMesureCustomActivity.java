@@ -3,6 +3,7 @@ package scoplan.camera;
 import androidx.core.content.ContextCompat;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -30,9 +31,6 @@ import com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity;
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorTextActivity;
 import com.dsphotoeditor.sdk.ui.stickerview.StickerView;
 
-import scoplan.camera.FakeR;
-import scoplan.camera.CustomI;
-
 public class PhotoEditorMesureCustomActivity extends DsPhotoEditorTextActivity implements View.OnClickListener {
     private FakeR fakeR;
     private StickerView a;
@@ -49,6 +47,9 @@ public class PhotoEditorMesureCustomActivity extends DsPhotoEditorTextActivity i
 
     @Override
     protected void onCreate(Bundle var1) {
+        Context context = getApplicationContext();
+        int themeId = context.getResources().getIdentifier("AppTheme.NoActionBar", "style", context.getPackageName());
+        setTheme(themeId);
         super.onCreate(var1);
         this.fakeR = new FakeR(this);
         this.setContentView(com.dsphotoeditor.sdk.R.layout.activity_ds_photo_editor_sticker_text);

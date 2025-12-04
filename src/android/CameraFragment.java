@@ -11,7 +11,6 @@ import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.SensorManager;
-import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
@@ -33,6 +32,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 
 import android.os.Environment;
@@ -40,7 +41,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.OrientationEventListener;
 import android.view.Surface;
@@ -48,8 +48,10 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -65,10 +67,6 @@ import java.util.Date;
 import java.util.List;
 
 import io.sentry.Sentry;
-import scoplan.camera.CameraUtils;
-import scoplan.camera.PhotoEditorActivity;
-import scoplan.camera.CameraEventListener;
-import scoplan.camera.FakeR;
 
 public class CameraFragment extends Fragment implements scoplan.camera.OnImageCaptureListener, View.OnClickListener {
     public static String SCOPLAN_TAG = "SCOPLAN_TAG";
@@ -375,6 +373,18 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             mSurfaceHolder.addCallback(surfaceHolderCallBack);
         }
         this.orientationEventListener.enable();
+
+        Window window = requireActivity().getWindow();
+
+        WindowInsetsControllerCompat controller =
+            WindowCompat.getInsetsController(window, window.getDecorView());
+
+        if (controller != null) {
+            controller.hide(WindowInsets.Type.statusBars());
+            controller.setSystemBarsBehavior(
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            );
+        }
     }
 
     @Override
@@ -382,6 +392,13 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         stopBackgroundThread();
         super.onPause();
         this.orientationEventListener.disable();
+        Window window = requireActivity().getWindow();
+        WindowInsetsControllerCompat controller =
+            WindowCompat.getInsetsController(window, window.getDecorView());
+
+        if (controller != null) {
+            controller.show(WindowInsets.Type.statusBars());
+        }
         release();
     }
 
