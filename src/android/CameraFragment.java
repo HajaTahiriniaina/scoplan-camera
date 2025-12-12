@@ -31,6 +31,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -41,6 +42,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.OrientationEventListener;
 import android.view.Surface;
@@ -66,6 +68,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import capacitor.cordova.android.plugins.R;
 import io.sentry.Sentry;
 
 public class CameraFragment extends Fragment implements scoplan.camera.OnImageCaptureListener, View.OnClickListener {
@@ -87,7 +90,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private OrientationEventListener orientationEventListener;
     private CameraCaptureSession cameraCaptureSessions;
     private CaptureRequest.Builder captureRequestBuilder;
-    private String cameraId;
+    private String cameraId = null;
     private int CAMERA_REQUEST_PERMISSION = 5000;
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
@@ -101,17 +104,29 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private int currentOrientation = -1;
     private boolean flashOn = false;
     private boolean cameraIsOpen = false;
-
+    private boolean previewReady = false;
     private SurfaceHolder mSurfaceHolder;
 
     private boolean surfaceAvailable = false;
     private LinearLayout cameraFrameLayout;
+    private boolean callbackAdded = false;
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        if (!callbackAdded) {
+            mSurfaceHolder.addCallback(surfaceHolderCallBack);
+            callbackAdded = true;
+        }
+    }
 
     private final SurfaceHolder.Callback surfaceHolderCallBack = new SurfaceHolder.Callback() {
         @Override
         public void surfaceCreated(@NonNull SurfaceHolder surfaceHolder) {
             surfaceAvailable = true;
-            openCamera();
+            if(!cameraIsOpen) {
+                openCamera();
+            }
         }
 
         @Override
@@ -198,13 +213,29 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             }
         };
 
-        this.fakeR = new FakeR(getContext());
+        this.fakeR = new FakeR(requireActivity());
+    }
+
+    private int findStyleResId(Context context, String styleName) {
+        // Convert dotted names (AppTheme.NoActionBar) to compiled names (AppTheme_NoActionBar)
+        String compiledName = styleName.replace('.', '_');
+
+        int resId = context.getResources().getIdentifier(
+            compiledName,
+            "style",
+            context.getPackageName()
+        );
+
+        return resId;
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(LayoutInflater outerInflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
+        int themeId = getActivity().getResources().getIdentifier("AppTheme.fullscreen", "style", getActivity().getPackageName());
+        ContextThemeWrapper themeContext = new ContextThemeWrapper(requireActivity(), themeId);
+        LayoutInflater inflater = outerInflater.cloneInContext(themeContext);
         View view =  inflater.inflate(this.fakeR.getLayout("fragment_camera"), container, false);
         camButton = view.findViewById(this.fakeR.getId("button_capture"));
         zoomBar = view.findViewById(this.fakeR.getId("camera_zoom"));
@@ -217,7 +248,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         drawOn = view.findViewById(this.fakeR.getId("draw_on"));
         assert surfaceView != null;
         mSurfaceHolder = surfaceView.getHolder();
-        mSurfaceHolder.addCallback(surfaceHolderCallBack);
         souche = view.findViewById(this.fakeR.getId("image_souche"));
         cameraTopBar = view.findViewById(this.fakeR.getId("cameraTopBar"));
         cancelBtn = view.findViewById(this.fakeR.getId("cancel"));
@@ -237,11 +267,12 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void createCameraPreview() {
-        if(cameraDevice == null || !surfaceAvailable)
+        if(cameraDevice == null || !surfaceAvailable || previewReady)
             return;
         if(!cameraIsOpen) {
             this.openCamera();
         }
+        previewReady = true;
         try{
             Surface surface = mSurfaceHolder.getSurface();
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -268,6 +299,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     private void openCamera() {
         try{
+            if (cameraId != null ) {
+                return;
+            }
             for (String id : manager.getCameraIdList()) {
                 CameraCharacteristics cameraCharacteristics =
                     manager.getCameraCharacteristics(id);
@@ -310,8 +344,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void updatePreview() {
-        if(cameraDevice == null)
-            Log.e(SCOPLAN_TAG, "Error camera");
         captureRequestBuilder.set(CaptureRequest.CONTROL_MODE,CaptureRequest.CONTROL_MODE_AUTO);
         try{
             CameraCharacteristics cameraCharacteristics =
@@ -367,10 +399,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     public void onResume() {
         super.onResume();
         startBackgroundThread();
-        if(surfaceAvailable)
+        if(surfaceAvailable && !cameraIsOpen) {
             openCamera();
-        else {
-            mSurfaceHolder.addCallback(surfaceHolderCallBack);
         }
         this.orientationEventListener.enable();
 
@@ -488,6 +518,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
+                    previewReady = false;
                     createCameraPreview();
                 }
 

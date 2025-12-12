@@ -1,5 +1,6 @@
 package scoplan.camera;
 
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.widget.FrameLayout;
 
@@ -38,20 +39,21 @@ public class ScoplanCamera extends CordovaPlugin implements CameraEventListener 
 
     private void takePictures(int limit, int currentCount) {
         cordova.getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        CameraEventListener cameraEventListener = this;
+        scoplan.camera.CameraEventListener cameraEventListener = this;
         cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 containerView = (FrameLayout)cordova.getActivity().findViewById(containerViewId);
                 if(containerView == null){
-                    containerView = new FrameLayout(cordova.getActivity().getApplicationContext());
+                    Context context = cordova.getActivity();
+                    containerView = new FrameLayout(context);
                     containerView.setId(containerViewId);
                     FrameLayout.LayoutParams containerLayoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
                     cordova.getActivity().addContentView(containerView, containerLayoutParams);
                     //add the fragment to the container
                 }
                 containerView.setClickable(true);
-                cameraFragment = new CameraFragment();
+                cameraFragment = new scoplan.camera.CameraFragment();
                 if(currentCount > 0){
                     cameraFragment.setCurrentCount(currentCount);
                 }
