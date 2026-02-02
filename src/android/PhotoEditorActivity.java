@@ -13,6 +13,11 @@ import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import com.dsphotoeditor.sdk.activity.DsPhotoEditorActivity;
 
 import java.io.File;
@@ -28,6 +33,10 @@ public class PhotoEditorActivity extends DsPhotoEditorActivity {
         int themeId = context.getResources().getIdentifier("AppTheme.NoActionBar", "style", context.getPackageName());
         setTheme(themeId);
         super.onCreate(savedInstanceState);
+
+        // Enable edge-to-edge and handle system bars
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         this.fakeR = new FakeR(this);
         this.e = this.getIntent().getData();
         if (this.e == null) {
@@ -35,6 +44,16 @@ public class PhotoEditorActivity extends DsPhotoEditorActivity {
             this.finish();
         } else {
             this.createBottomBar(savedInstanceState);
+        }
+
+        // Apply window insets to root layout
+        View rootView = findViewById(fakeR.getId("ds_photo_editor_root_layout"));
+        if (rootView != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, windowInsets) -> {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+                return WindowInsetsCompat.CONSUMED;
+            });
         }
     }
 

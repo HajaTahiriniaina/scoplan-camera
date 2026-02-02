@@ -118,6 +118,16 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             mSurfaceHolder.addCallback(surfaceHolderCallBack);
             callbackAdded = true;
         }
+
+        // Apply window insets to root view to handle system bars
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(view, (v, windowInsets) -> {
+            androidx.core.graphics.Insets insets = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+
+            // Apply padding to root view
+            v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+
+            return androidx.core.view.WindowInsetsCompat.CONSUMED;
+        });
     }
 
     private final SurfaceHolder.Callback surfaceHolderCallBack = new SurfaceHolder.Callback() {
@@ -263,6 +273,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         validationButton.setOnClickListener(this);
         flashBtn.setOnClickListener(this);
         this.defineViewVisibility();
+
         return view;
     }
 
@@ -406,14 +417,15 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
         Window window = requireActivity().getWindow();
 
+        // Enable edge-to-edge mode but keep system bars visible
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(window, window.getDecorView());
 
         if (controller != null) {
-            controller.hide(WindowInsets.Type.statusBars());
-            controller.setSystemBarsBehavior(
-                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            );
+            // Show status and navigation bars
+            controller.show(WindowInsets.Type.systemBars());
         }
     }
 
@@ -423,11 +435,15 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         super.onPause();
         this.orientationEventListener.disable();
         Window window = requireActivity().getWindow();
+
+        // Restore normal window mode when leaving camera
+        WindowCompat.setDecorFitsSystemWindows(window, true);
+
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(window, window.getDecorView());
 
         if (controller != null) {
-            controller.show(WindowInsets.Type.statusBars());
+            controller.show(WindowInsets.Type.systemBars());
         }
         release();
     }
