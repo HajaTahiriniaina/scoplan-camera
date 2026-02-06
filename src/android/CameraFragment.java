@@ -108,6 +108,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private SurfaceHolder mSurfaceHolder;
 
     private boolean surfaceAvailable = false;
+    private boolean surfaceSizeConfigured = false;
+    private Size optimalPreviewSize = null;
     private LinearLayout cameraFrameLayout;
     private boolean callbackAdded = false;
 
@@ -146,8 +148,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
         @Override
         public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
-            //TODO close
             surfaceAvailable = false;
+            surfaceSizeConfigured = false;
             release();
         }
     };
@@ -157,19 +159,24 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         public void onOpened(@NonNull CameraDevice camera) {
             cameraDevice = camera;
             cameraIsOpen = true;
-            createCameraPreview();
+            // Configure surface size first; surfaceChanged will trigger createCameraPreview
+            configureSurfaceSize();
         }
 
         @Override
-        public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-            cameraDevice.close();
+        public void onDisconnected(@NonNull CameraDevice camera) {
             cameraIsOpen = false;
+            previewReady = false;
+            surfaceSizeConfigured = false;
             release();
         }
 
         @Override
-        public void onError(@NonNull CameraDevice cameraDevice, int i) {
-            cameraDevice.close();
+        public void onError(@NonNull CameraDevice camera, int error) {
+            Log.e(SCOPLAN_TAG, "CameraDevice.StateCallback onError: " + error);
+            cameraIsOpen = false;
+            previewReady = false;
+            surfaceSizeConfigured = false;
             release();
         }
     };
@@ -277,33 +284,81 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         return view;
     }
 
+    private void configureSurfaceSize() {
+        if (cameraId == null || getActivity() == null) {
+            // Can't configure yet, fall back to direct preview
+            surfaceSizeConfigured = true;
+            createCameraPreview();
+            return;
+        }
+        try {
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            if (map != null) {
+                Size[] outputSizes = map.getOutputSizes(SurfaceTexture.class);
+                optimalPreviewSize = selectedPreviewSize(outputSizes);
+                if (optimalPreviewSize != null && cameraFrameLayout.getWidth() > 0) {
+                    Size displaySize = calculateSurfaceSize(optimalPreviewSize);
+                    getActivity().runOnUiThread(() -> {
+                        if (!isAdded()) return;
+                        ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
+                        layoutParams.width = displaySize.getWidth();
+                        layoutParams.height = displaySize.getHeight();
+                        surfaceView.setLayoutParams(layoutParams);
+                        // Set buffer to camera native resolution
+                        mSurfaceHolder.setFixedSize(optimalPreviewSize.getWidth(), optimalPreviewSize.getHeight());
+                        // surfaceChanged will be called → createCameraPreview
+                        surfaceSizeConfigured = true;
+                    });
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(SCOPLAN_TAG, "Error configuring surface size", e);
+        }
+        // Fallback: proceed directly
+        surfaceSizeConfigured = true;
+        createCameraPreview();
+    }
+
     private void createCameraPreview() {
-        if(cameraDevice == null || !surfaceAvailable || previewReady)
+        if(cameraDevice == null || !surfaceAvailable || previewReady || !surfaceSizeConfigured)
             return;
         if(!cameraIsOpen) {
             this.openCamera();
+            return;
         }
         previewReady = true;
         try{
+            // Close any existing session before creating a new one
+            closeSession();
+
             Surface surface = mSurfaceHolder.getSurface();
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    if(cameraDevice == null)
+                    if(cameraDevice == null) {
+                        previewReady = false;
                         return;
+                    }
                     cameraCaptureSessions = cameraCaptureSession;
                     updatePreview();
                 }
 
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    Sentry.captureMessage(cameraCaptureSession.toString());
+                    Log.e(SCOPLAN_TAG, "onConfigureFailed for preview session");
+                    Sentry.captureMessage("onConfigureFailed: " + cameraCaptureSession.toString());
+                    previewReady = false;
+                    failedCapture();
                 }
-            },null);
+            }, mBackgroundHandler);
         } catch (Exception e) {
+            Log.e(SCOPLAN_TAG, "Error creating camera preview", e);
             Sentry.captureException(e);
+            previewReady = false;
             this.failedCapture();
         }
     }
@@ -316,13 +371,16 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             for (String id : manager.getCameraIdList()) {
                 CameraCharacteristics cameraCharacteristics =
                     manager.getCameraCharacteristics(id);
-                if (cameraCharacteristics.get(cameraCharacteristics.LENS_FACING) ==
+                if (cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) ==
                     CameraCharacteristics.LENS_FACING_BACK) {
                     cameraId = id;
                     break;
                 }
             }
-            cameraId = manager.getCameraIdList()[0];
+            // Fallback to first camera only if no back camera was found
+            if (cameraId == null) {
+                cameraId = manager.getCameraIdList()[0];
+            }
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map != null;
@@ -355,26 +413,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void updatePreview() {
-        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE,CaptureRequest.CONTROL_MODE_AUTO);
-        try{
-            CameraCharacteristics cameraCharacteristics =
-                manager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            if(map != null) {
-                Size[] outputSizes = map.getOutputSizes(SurfaceTexture.class);
-                Size preferredSize = selectedPreviewSize(outputSizes);
-                if(preferredSize != null) {
-                    ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
-                    Size surfaceSize = calculateSurfaceSize(preferredSize);
-                    getActivity().runOnUiThread(() -> {
-                        layoutParams.width = surfaceSize.getWidth();
-                        layoutParams.height = surfaceSize.getHeight();
-                        mSurfaceHolder.setFixedSize(surfaceSize.getWidth(), surfaceSize.getHeight());
-                        surfaceView.setLayoutParams(layoutParams);
-                    });
-                }
-            }
-            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(),null, mBackgroundHandler);
+        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+        try {
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, mBackgroundHandler);
             this.cameraSeekBarListener = new scoplan.camera.CameraSeekBarListener(cameraId, manager, zoomBar, captureRequestBuilder, cameraCaptureSessions, mBackgroundHandler);
         } catch (Exception e) {
             Sentry.captureException(e);
@@ -384,23 +425,54 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     private Size calculateSurfaceSize(Size selectedSize) {
         int parentWidth = this.cameraFrameLayout.getWidth();
-        Size correctSize = new Size(selectedSize.getHeight(), selectedSize.getWidth()); // We are in portrait mode
+        int parentHeight = this.cameraFrameLayout.getHeight();
 
-        float aspectRatio = (float) correctSize.getWidth() / correctSize.getHeight();
+        // Camera sensor is landscape, but we display in portrait → swap W/H
+        float previewAspectRatio = (float) selectedSize.getHeight() / selectedSize.getWidth();
 
-        int height = (int) (parentWidth / aspectRatio);
-        return new Size(parentWidth, height);
+        // Center-crop: fill the entire parent, crop overflow (no distortion)
+        int surfaceWidth, surfaceHeight;
+        int fitWidth = parentWidth;
+        int fitHeight = (int) (parentWidth / previewAspectRatio);
+
+        if (fitHeight >= parentHeight) {
+            // Fit by width already fills the height — use it
+            surfaceWidth = fitWidth;
+            surfaceHeight = fitHeight;
+        } else {
+            // Fit by height and let width overflow
+            surfaceHeight = parentHeight;
+            surfaceWidth = (int) (parentHeight * previewAspectRatio);
+        }
+
+        return new Size(surfaceWidth, surfaceHeight);
     }
 
     private Size selectedPreviewSize(Size[] outputSizes) {
-        float targetAspectRatio = 1f; // For example, 16:9 aspect ratio
-        // Choose a suitable size from outputSizes based on the aspect ratio
+        // Target 4:3 aspect ratio (landscape sensor: width > height, so 4/3 ≈ 1.333)
+        float targetAspectRatio = 4f / 3f;
         Size selectedSize = null;
+        int bestArea = 0;
+
         for (Size size : outputSizes) {
             float aspectRatio = (float) size.getWidth() / size.getHeight();
-            if (Math.abs(aspectRatio - targetAspectRatio) < 0.1) {
-                selectedSize = size;
-                break;
+            if (Math.abs(aspectRatio - targetAspectRatio) < 0.05) {
+                // Among matching ratios, pick the largest for best quality
+                int area = size.getWidth() * size.getHeight();
+                if (area > bestArea) {
+                    bestArea = area;
+                    selectedSize = size;
+                }
+            }
+        }
+
+        // Fallback: if no 4:3, pick the largest size available
+        if (selectedSize == null && outputSizes.length > 0) {
+            selectedSize = outputSizes[0];
+            for (Size size : outputSizes) {
+                if (size.getWidth() * size.getHeight() > selectedSize.getWidth() * selectedSize.getHeight()) {
+                    selectedSize = size;
+                }
             }
         }
         return selectedSize;
@@ -454,23 +526,44 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         release();
     }
 
+    private void closeSession() {
+        if(cameraCaptureSessions != null) {
+            try {
+                cameraCaptureSessions.close();
+            } catch (Exception e) {
+                Log.e(SCOPLAN_TAG, "Error closing capture session", e);
+            }
+            cameraCaptureSessions = null;
+        }
+    }
+
     private void release() {
+        closeSession();
         if(cameraDevice != null) {
-            cameraDevice.close();
+            try {
+                cameraDevice.close();
+            } catch (Exception e) {
+                Log.e(SCOPLAN_TAG, "Error closing camera device", e);
+            }
             cameraIsOpen = false;
+            previewReady = false;
             cameraDevice = null;
+            cameraId = null;
         }
     }
 
     private void stopBackgroundThread() {
+        if (mBackgroundThread == null) {
+            return;
+        }
         mBackgroundThread.quitSafely();
         try{
             mBackgroundThread.join();
-            mBackgroundThread= null;
-            mBackgroundHandler = null;
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.e(SCOPLAN_TAG, "Error stopping background thread", e);
         }
+        mBackgroundThread = null;
+        mBackgroundHandler = null;
     }
 
     private void startBackgroundThread() {
@@ -488,15 +581,18 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void takePicture() {
+        if(getContext() == null) {
+            return;
+        }
         if(this.pictureCount >= this.photoLimit){
             Toast toast = Toast.makeText(this.getContext(), "La prise de photos est limitée à " + this.photoLimit + " par envoi", Toast.LENGTH_SHORT);
             toast.show();
             return;
         }
-        if(this.mBackgroundThread == null || !this.mBackgroundThread.isInterrupted() || !this.mBackgroundThread.isAlive()) {
+        if(this.mBackgroundThread == null || !this.mBackgroundThread.isAlive()) {
             this.startBackgroundThread();
         }
-        if(cameraDevice == null) {
+        if(cameraDevice == null || cameraId == null) {
             return;
         }
         this.pictureCount++;
@@ -505,9 +601,12 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         try {
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             Size[] jpegSizes = null;
-            if(characteristics != null)
-                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                    .getOutputSizes(ImageFormat.JPEG);
+            if(characteristics != null) {
+                StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                if (map != null) {
+                    jpegSizes = map.getOutputSizes(ImageFormat.JPEG);
+                }
+            }
             //Capture image with custom size
             int width = 640;
             int height = 480;
@@ -516,7 +615,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
             }
-            final ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG,1);
+            final ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
             List<Surface> outputSurface = new ArrayList<>(2);
             outputSurface.add(reader.getSurface());
             outputSurface.add(mSurfaceHolder.getSurface());
@@ -526,7 +625,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             captureBuilder.set(CaptureRequest.FLASH_MODE, flashOn ? CaptureRequest.FLASH_MODE_TORCH : CaptureRequest.FLASH_MODE_OFF);
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String fileName = "IMG_"+ timeStamp + ".jpg";
-            File file = new File( this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), fileName);
+            File file = new File(this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), fileName);
             ImageReader.OnImageAvailableListener readerListener = new scoplan.camera.ImageCameraAvailableListener(file, reader, this, currentOrientation);
 
             reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
@@ -534,6 +633,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
+                    reader.close();
                     previewReady = false;
                     createCameraPreview();
                 }
@@ -541,8 +641,10 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 @Override
                 public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
                     super.onCaptureFailed(session, request, failure);
+                    reader.close();
                     Sentry.captureMessage("Failed capture _" + failure.getReason());
                     Log.e(SCOPLAN_TAG, "Error FAILED Capture " + failure.getReason());
+                    pictureCount--;
                     failedCapture();
                 }
             };
@@ -555,43 +657,59 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     } catch (Exception e) {
                         Log.e(SCOPLAN_TAG, "Error - " + e.getMessage());
                         Sentry.captureException(e);
+                        reader.close();
+                        pictureCount--;
                         failedCapture();
                     }
                 }
 
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    Log.e(SCOPLAN_TAG, "Error FAILED Configuration ");
-                    Sentry.captureMessage("Failed configure cameraCaptureSession");
+                    Log.e(SCOPLAN_TAG, "Error FAILED Configuration for capture session");
+                    Sentry.captureMessage("Failed configure capture session");
+                    reader.close();
+                    pictureCount--;
                     failedCapture();
                 }
             }, mBackgroundHandler);
 
         } catch (Exception e) {
+            Log.e(SCOPLAN_TAG, "Error in takePicture", e);
             Sentry.captureException(e);
-            throw new RuntimeException(e);
+            pictureCount--;
+            failedCapture();
         }
     }
 
     @Override
     public void onImageCapture(File file, Bitmap bitmap) {
         pictures.add(file.getAbsolutePath());
-        getActivity().runOnUiThread(() -> {
-            souche.setImageBitmap(bitmap);
-            defineViewVisibility();
-        });
+        if (getActivity() != null && isAdded()) {
+            getActivity().runOnUiThread(() -> {
+                if (isAdded()) {
+                    souche.setImageBitmap(bitmap);
+                    defineViewVisibility();
+                }
+            });
+        }
     }
 
     @Override
     public void onImageBuildFailed(Exception e) {
         Sentry.captureException(e);
+        pictureCount--;
         failedCapture();
     }
 
     public void failedCapture() {
-        Toast toast = Toast.makeText(getContext(), "Oups! une erreur pendant la capture. Veuillez rééssayer.", Toast.LENGTH_LONG);
-        toast.show();
+        if (getActivity() == null || !isAdded()) {
+            return;
+        }
         getActivity().runOnUiThread(() -> {
+            if (!isAdded() || getContext() == null) {
+                return;
+            }
+            Toast.makeText(getContext(), "Oups! une erreur pendant la capture. Veuillez rééssayer.", Toast.LENGTH_LONG).show();
             defineViewVisibility();
         });
     }

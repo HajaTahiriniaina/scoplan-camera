@@ -29,33 +29,43 @@ public class ImageCameraAvailableListener implements ImageReader.OnImageAvailabl
         Image image = null;
         try{
             image = reader.acquireLatestImage();
+            if (image == null) {
+                this.imageCaptureListener.onImageBuildFailed(new IOException("Failed to acquire image"));
+                return;
+            }
             ByteBuffer buffer = image.getPlanes()[0].getBuffer();
             byte[] bytes = new byte[buffer.capacity()];
             buffer.get(bytes);
             this.imageCaptureListener.onImageCapture(file, save(bytes));
         }
-        catch (IOException e)
+        catch (Exception e)
         {
             e.printStackTrace();
             this.imageCaptureListener.onImageBuildFailed(e);
         }
         finally {
-            {
-                if(image != null)
-                    image.close();
-            }
+            if(image != null)
+                image.close();
         }
     }
 
     private Bitmap save(byte[] bytes) throws IOException {
         OutputStream outputStream = null;
+        Bitmap bmp = null;
         try{
             outputStream = new FileOutputStream(file);
-            Bitmap bmp = BitmapFactory.decodeByteArray(bytes,0, bytes.length);
+            bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (bmp == null) {
+                throw new IOException("Failed to decode image bytes");
+            }
             Matrix matrix = new Matrix();
             matrix.setRotate(this.rotation);
             Bitmap rotatedBitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
             rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 65, outputStream);
+            // Recycle original bitmap only if rotation created a new one
+            if (rotatedBitmap != bmp) {
+                bmp.recycle();
+            }
             return rotatedBitmap;
         } finally {
             if(outputStream != null)
