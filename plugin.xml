@@ -65,7 +65,7 @@
 		<framework custom="true" src="src/android/gradle/scoplanCamera.gradle" type="gradleReference" />
 		<framework src="com.google.android.material:material:1.5.0-alpha02" />
 		<framework src="com.squareup.picasso:picasso:2.8" />
-		<framework src="io.sentry:sentry-android:7.2.0" />
+		<framework src="io.sentry:sentry-android:8.31.0" />
 		<framework src="androidx.constraintlayout:constraintlayout:2.1.4" />
 		<lib-file src="src/android/libs/ds-photo-editor-sdk-v9.aar" />
 	</platform>

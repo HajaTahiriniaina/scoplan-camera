@@ -1,6 +1,10 @@
 package scoplan.camera;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -53,6 +57,18 @@ public class PhotoEditorMesureCustomActivity extends DsPhotoEditorTextActivity i
         super.onCreate(var1);
         this.fakeR = new FakeR(this);
         this.setContentView(com.dsphotoeditor.sdk.R.layout.activity_ds_photo_editor_sticker_text);
+
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        View rootView = findViewById(com.dsphotoeditor.sdk.R.id.ds_photo_editor_text_sticker_root_layout);
+        if (rootView != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, windowInsets) -> {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+                return WindowInsetsCompat.CONSUMED;
+            });
+        }
+
         if (original != null && !original.isRecycled()) {
             this.a();
             this.b();
