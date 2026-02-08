@@ -64,8 +64,8 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
 @property (strong, nonatomic) IBOutlet UIView *rootView;
 @property (strong, nonatomic) IBOutlet UIImageView *imageview;
 @property (strong, nonatomic) IBOutlet UIButton *okbutton;
-@property (strong, nonatomic) IBOutlet UIView *blackbottom;
 @property (strong, nonatomic) IBOutlet UIImageView *progress;
+@property (nonatomic, strong) AVCaptureVideoPreviewLayer *fullscreenPreviewLayer;
 
 // Session management.
 @property (nonatomic, weak) IBOutlet AVCamPreviewView *previewView;
@@ -113,7 +113,7 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
 
 - (void)insertImgUrl:(NSString*)url{
     dispatch_async(dispatch_get_main_queue(), ^{
-        [_okbutton setTitle: @"OK" forState: UIControlStateNormal];
+        [_okbutton setTitle:@"OK" forState:UIControlStateNormal];
         [_photoButton setHidden:FALSE];
         [_progress stopAnimating];
         [_progress setHidden:TRUE];
@@ -160,6 +160,7 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
     
     // Set up the preview view.
     self.previewView.session = self.session;
+    self.previewView.videoPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     
     // Communicate with the session and other session objects on this queue.
     self.sessionQueue = dispatch_queue_create( "session queue", DISPATCH_QUEUE_SERIAL );
@@ -234,6 +235,14 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
 }
 
 
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    if (self.fullscreenPreviewLayer) {
+        self.fullscreenPreviewLayer.frame = _rootView.bounds;
+    }
+}
+
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
@@ -268,11 +277,14 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
                                 }
                                 
                             }];
-    AVCaptureVideoPreviewLayer *previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
-    previewLayer.frame = _rootView.bounds;
-    previewLayer.videoGravity = AVLayerVideoGravityResizeAspect;
-    [_rootView.layer addSublayer:previewLayer];
-    _blackbottom.layer.zPosition = 1;
+    // Remove old preview layer if any (e.g. on re-appear)
+    if (self.fullscreenPreviewLayer) {
+        [self.fullscreenPreviewLayer removeFromSuperlayer];
+    }
+    self.fullscreenPreviewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
+    self.fullscreenPreviewLayer.frame = _rootView.bounds;
+    self.fullscreenPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+    [_rootView.layer addSublayer:self.fullscreenPreviewLayer];
     _photoButton.imageView.layer.zPosition = 1;
     _photoButton.layer.zPosition = 1;
     _imageview.layer.zPosition = 1;

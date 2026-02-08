@@ -302,13 +302,19 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     getActivity().runOnUiThread(() -> {
                         if (!isAdded()) return;
                         ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
+                        boolean sizeChanged = layoutParams.width != displaySize.getWidth()
+                                || layoutParams.height != displaySize.getHeight();
                         layoutParams.width = displaySize.getWidth();
                         layoutParams.height = displaySize.getHeight();
                         surfaceView.setLayoutParams(layoutParams);
                         // Set buffer to camera native resolution
                         mSurfaceHolder.setFixedSize(optimalPreviewSize.getWidth(), optimalPreviewSize.getHeight());
-                        // surfaceChanged will be called → createCameraPreview
                         surfaceSizeConfigured = true;
+                        // If size didn't change, surfaceChanged won't fire, so call createCameraPreview directly
+                        if (!sizeChanged) {
+                            createCameraPreview();
+                        }
+                        // Otherwise surfaceChanged will be called → createCameraPreview
                     });
                     return;
                 }
@@ -547,6 +553,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             }
             cameraIsOpen = false;
             previewReady = false;
+            surfaceSizeConfigured = false;
             cameraDevice = null;
             cameraId = null;
         }
