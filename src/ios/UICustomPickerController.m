@@ -7,6 +7,15 @@
 #import "UICustomPickerController.h"
 
 @implementation UICustomPickerController
+
+- (BOOL)prefersStatusBarHidden {
+    return NO;
+}
+
+- (UIStatusBarStyle)preferredStatusBarStyle {
+    return UIStatusBarStyleLightContent;
+}
+
 -(void)initData:(UIImageView*)souche mCamera:(ScoplanCamera*)mcm{
     imageSouche = souche;
     mCamera = mcm;
