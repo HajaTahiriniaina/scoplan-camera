@@ -302,19 +302,16 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     getActivity().runOnUiThread(() -> {
                         if (!isAdded()) return;
                         ViewGroup.LayoutParams layoutParams = surfaceView.getLayoutParams();
-                        boolean sizeChanged = layoutParams.width != displaySize.getWidth()
-                                || layoutParams.height != displaySize.getHeight();
                         layoutParams.width = displaySize.getWidth();
                         layoutParams.height = displaySize.getHeight();
                         surfaceView.setLayoutParams(layoutParams);
                         // Set buffer to camera native resolution
                         mSurfaceHolder.setFixedSize(optimalPreviewSize.getWidth(), optimalPreviewSize.getHeight());
                         surfaceSizeConfigured = true;
-                        // If size didn't change, surfaceChanged won't fire, so call createCameraPreview directly
-                        if (!sizeChanged) {
-                            createCameraPreview();
-                        }
-                        // Otherwise surfaceChanged will be called → createCameraPreview
+                        // Always call createCameraPreview directly.
+                        // surfaceChanged may or may not fire depending on the device;
+                        // createCameraPreview is safe to call multiple times (guarded by previewReady).
+                        createCameraPreview();
                     });
                     return;
                 }
@@ -374,6 +371,10 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             if (cameraId != null ) {
                 return;
             }
+            // Ensure background thread is started
+            if (mBackgroundHandler == null) {
+                startBackgroundThread();
+            }
             for (String id : manager.getCameraIdList()) {
                 CameraCharacteristics cameraCharacteristics =
                     manager.getCameraCharacteristics(id);
@@ -399,7 +400,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                 }, CAMERA_REQUEST_PERMISSION);
                 return;
             }
-            manager.openCamera(cameraId, stateCallback,null);
+            manager.openCamera(cameraId, stateCallback, mBackgroundHandler);
         } catch (Exception e) {
             Sentry.captureException(e);
             this.failedCapture();
