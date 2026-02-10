@@ -37,14 +37,14 @@
 		<source-file src="src/android/CameraUtils.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/CustomI.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/FakeR.java" target-dir="src/scoplan/camera/ScoplanCamera" />
-		<source-file src="src/android/ImageCameraAvailableListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+
 		<source-file src="src/android/OnImageCaptureListener.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/PhotoEditorActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/PhotoEditorMenu.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/PhotoEditorMesureCustomActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/PhotoEditorStore.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/ScoplanCamera.java" target-dir="src/scoplan/camera/ScoplanCamera" />
-		<source-file src="src/android/AutoFitSurfaceView.java" target-dir="src/scoplan/camera/ScoplanCamera" />
+
 		<source-file src="src/android/CCropActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/CDrawActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
 		<source-file src="src/android/CTextActivity.java" target-dir="src/scoplan/camera/ScoplanCamera" />
@@ -67,6 +67,10 @@
 		<framework src="com.squareup.picasso:picasso:2.8" />
 		<framework src="io.sentry:sentry-android:8.31.0" />
 		<framework src="androidx.constraintlayout:constraintlayout:2.1.4" />
+		<framework src="androidx.camera:camera-core:1.4.1" />
+		<framework src="androidx.camera:camera-camera2:1.4.1" />
+		<framework src="androidx.camera:camera-lifecycle:1.4.1" />
+		<framework src="androidx.camera:camera-view:1.4.1" />
 		<lib-file src="src/android/libs/ds-photo-editor-sdk-v9.aar" />
 	</platform>
 	<platform name="ios">
