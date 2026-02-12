@@ -2,6 +2,7 @@
 #import "UIScoplanCamera.h"
 #import "UIImagePickerDelegate.h"
 #import "UICustomPickerController.h"
+@import AVFoundation;
 
 /********* ScoplanCamera.m Cordova Plugin Implementation *******/
 @interface ScoplanCamera()
@@ -10,6 +11,9 @@
     @property (nonatomic) UICustomPickerController *cameraUI;
     @property int photoLimit;
     @property int currentCount;
+    @property (nonatomic) CGAffineTransform baseTransform;
+    @property (nonatomic) CGFloat currentZoomFactor;
+    @property (nonatomic) CGFloat pinchBaseZoom;
 @end
 
 @implementation ScoplanCamera
@@ -111,6 +115,58 @@
     });
 }
 
+-(void)applyZoom:(CGFloat)zoomFactor{
+    self.currentZoomFactor = zoomFactor;
+    CGAffineTransform zoomTransform = CGAffineTransformScale(self.baseTransform, zoomFactor, zoomFactor);
+    self.cameraUI.cameraViewTransform = zoomTransform;
+    [self updateZoomButtonHighlights];
+}
+
+-(void)updateZoomButtonHighlights{
+    UIButton *btn05 = (UIButton *)[self.cameraUI.cameraOverlayView viewWithTag:21];
+    UIButton *btn1x = (UIButton *)[self.cameraUI.cameraOverlayView viewWithTag:22];
+    UIButton *btn2x = (UIButton *)[self.cameraUI.cameraOverlayView viewWithTag:23];
+    UIColor *gold = [UIColor colorWithRed:1.0 green:0.843 blue:0.0 alpha:1.0];
+    UIColor *white = [UIColor whiteColor];
+
+    if (self.currentZoomFactor < 0.8) {
+        [btn05 setTitleColor:gold forState:UIControlStateNormal];
+        [btn1x setTitleColor:white forState:UIControlStateNormal];
+        [btn2x setTitleColor:white forState:UIControlStateNormal];
+    } else if (self.currentZoomFactor < 1.5) {
+        [btn05 setTitleColor:white forState:UIControlStateNormal];
+        [btn1x setTitleColor:gold forState:UIControlStateNormal];
+        [btn2x setTitleColor:white forState:UIControlStateNormal];
+    } else {
+        [btn05 setTitleColor:white forState:UIControlStateNormal];
+        [btn1x setTitleColor:white forState:UIControlStateNormal];
+        [btn2x setTitleColor:gold forState:UIControlStateNormal];
+    }
+}
+
+-(void)zoom05xClicked:(id)sender{
+    [self applyZoom:0.5];
+}
+
+-(void)zoom1xClicked:(id)sender{
+    [self applyZoom:1.0];
+}
+
+-(void)zoom2xClicked:(id)sender{
+    [self applyZoom:2.0];
+}
+
+-(void)handlePinchZoom:(UIPinchGestureRecognizer *)pinch{
+    if (pinch.state == UIGestureRecognizerStateBegan) {
+        self.pinchBaseZoom = self.currentZoomFactor;
+    } else if (pinch.state == UIGestureRecognizerStateChanged) {
+        CGFloat newZoom = self.pinchBaseZoom * pinch.scale;
+        // Clamp between 0.5x and 10x
+        newZoom = MAX(0.5, MIN(newZoom, 10.0));
+        [self applyZoom:newZoom];
+    }
+}
+
 - (void)flushPicture:(NSString*)url{
     NSUInteger count = [mpictures count];
     mpictures[count - 1] = url;
@@ -157,6 +213,25 @@
             });
             [cancelBtn addTarget: self action: @selector(cancelClicked:) forControlEvents: UIControlEventTouchUpInside];
             [cancelBtn2 addTarget: self action: @selector(cancelConfirm:) forControlEvents: UIControlEventTouchUpInside];
+            // Zoom buttons
+            UIButton *zoom05Btn = (UIButton *)[self.overLayView viewWithTag:21];
+            UIButton *zoom1xBtn = (UIButton *)[self.overLayView viewWithTag:22];
+            UIButton *zoom2xBtn = (UIButton *)[self.overLayView viewWithTag:23];
+            [zoom05Btn addTarget:self action:@selector(zoom05xClicked:) forControlEvents:UIControlEventTouchUpInside];
+            [zoom1xBtn addTarget:self action:@selector(zoom1xClicked:) forControlEvents:UIControlEventTouchUpInside];
+            [zoom2xBtn addTarget:self action:@selector(zoom2xClicked:) forControlEvents:UIControlEventTouchUpInside];
+            // Hide 0.5x if no ultra-wide camera
+            if (@available(iOS 13.0, *)) {
+                AVCaptureDevice *ultraWide = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
+                if (!ultraWide) {
+                    zoom05Btn.hidden = YES;
+                }
+            } else {
+                zoom05Btn.hidden = YES;
+            }
+            // Pinch-to-zoom
+            UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinchZoom:)];
+            [self.overLayView addGestureRecognizer:pinch];
             UIImageView * imagePreview = ((UIImageView *)[self.overLayView viewWithTag:3]);
             imagePreview.image = nil;
             [self.webView addSubview:self.overLayView];
@@ -208,7 +283,9 @@
     CGFloat translateY = safeTop / 2.0 + (visibleHeight - cameraPreviewHeight) / 2.0;
     CGAffineTransform scaleTransform = CGAffineTransformMakeScale(scale, scale);
     CGAffineTransform translateTransform = CGAffineTransformMakeTranslation(0, translateY);
-    self.cameraUI.cameraViewTransform = CGAffineTransformConcat(scaleTransform, translateTransform);
+    self.baseTransform = CGAffineTransformConcat(scaleTransform, translateTransform);
+    self.currentZoomFactor = 1.0;
+    self.cameraUI.cameraViewTransform = self.baseTransform;
 
     // Add a black bar covering the safe-area-top (behind status bar)
     UIView *statusBarBg = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenWidth, safeTop)];

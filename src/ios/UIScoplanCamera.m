@@ -197,6 +197,11 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
     UIPinchGestureRecognizer* pinchGst = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(pinchForZoom:)];
     [self.previewView addGestureRecognizer:pinchGst];
     [self.session commitConfiguration];
+
+    // Check 0.5x availability after a short delay (device may not be configured yet)
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self checkUltraWideAvailability];
+    });
     
     /*
      Setup the capture session.
@@ -224,16 +229,104 @@ typedef NS_ENUM( NSInteger, AVCamDepthDataDeliveryMode ) {
         if ([self.videoDeviceInput.device lockForConfiguration:&error]) {
 
             CGFloat desiredZoomFactor = zoomFactorBegin * pinchRecognizer.scale;
-            CGFloat zoomFactor = MAX(1.0, MIN(desiredZoomFactor, self.videoDeviceInput.device.activeFormat.videoMaxZoomFactor));
+            CGFloat maxZoom = self.videoDeviceInput.device.activeFormat.videoMaxZoomFactor;
+            CGFloat minZoom = self.videoDeviceInput.device.minAvailableVideoZoomFactor;
+            CGFloat zoomFactor = MAX(minZoom, MIN(desiredZoomFactor, maxZoom));
             [self.videoDeviceInput.device rampToVideoZoomFactor:zoomFactor withRate:3.0];
 
             [self.videoDeviceInput.device unlockForConfiguration];
+            [self updateZoomButtonHighlightsWithZoom:zoomFactor];
         } else {
             NSLog(@"error: %@", error);
         }
     }
 }
 
+- (void)setDeviceZoom:(CGFloat)factor {
+    AVCaptureDevice *device = self.videoDeviceInput.device;
+    if (!device) return;
+    NSError *error = nil;
+    if ([device lockForConfiguration:&error]) {
+        CGFloat maxZoom = device.activeFormat.videoMaxZoomFactor;
+        CGFloat minZoom = device.minAvailableVideoZoomFactor;
+        CGFloat zoomFactor = MAX(minZoom, MIN(factor, maxZoom));
+        [device rampToVideoZoomFactor:zoomFactor withRate:6.0];
+        [device unlockForConfiguration];
+        [self updateZoomButtonHighlightsWithZoom:zoomFactor];
+    }
+}
+
+- (void)updateZoomButtonHighlightsWithZoom:(CGFloat)zoomFactor {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Find zoom buttons in the storyboard by traversing subviews
+        // Storyboard buttons are connected via IBAction, we look for them via tag or iterate
+        // Since storyboard doesn't use tags, we use the outlet approach
+        // Actually let's use a simpler way: find stackview subviews
+        for (UIView *subview in self.view.subviews) {
+            if ([subview isKindOfClass:[UIStackView class]]) {
+                UIStackView *stack = (UIStackView *)subview;
+                if (stack.arrangedSubviews.count == 3) {
+                    UIButton *btn05 = (UIButton *)stack.arrangedSubviews[0];
+                    UIButton *btn1x = (UIButton *)stack.arrangedSubviews[1];
+                    UIButton *btn2x = (UIButton *)stack.arrangedSubviews[2];
+                    UIColor *gold = [UIColor colorWithRed:1.0 green:0.843 blue:0.0 alpha:1.0];
+                    UIColor *white = [UIColor whiteColor];
+
+                    if (zoomFactor < 0.8) {
+                        [btn05 setTitleColor:gold forState:UIControlStateNormal];
+                        [btn1x setTitleColor:white forState:UIControlStateNormal];
+                        [btn2x setTitleColor:white forState:UIControlStateNormal];
+                    } else if (zoomFactor < 1.5) {
+                        [btn05 setTitleColor:white forState:UIControlStateNormal];
+                        [btn1x setTitleColor:gold forState:UIControlStateNormal];
+                        [btn2x setTitleColor:white forState:UIControlStateNormal];
+                    } else {
+                        [btn05 setTitleColor:white forState:UIControlStateNormal];
+                        [btn1x setTitleColor:white forState:UIControlStateNormal];
+                        [btn2x setTitleColor:gold forState:UIControlStateNormal];
+                    }
+                    break;
+                }
+            }
+        }
+    });
+}
+
+- (IBAction)zoom05x:(id)sender {
+    CGFloat minZoom = self.videoDeviceInput.device.minAvailableVideoZoomFactor;
+    [self setDeviceZoom:minZoom];
+}
+
+- (IBAction)zoom1x:(id)sender {
+    [self setDeviceZoom:1.0];
+}
+
+- (IBAction)zoom2x:(id)sender {
+    [self setDeviceZoom:2.0];
+}
+
+
+- (void)checkUltraWideAvailability {
+    BOOL hasUltraWide = NO;
+    AVCaptureDevice *device = self.videoDeviceInput.device;
+    if (device) {
+        CGFloat minZoom = device.minAvailableVideoZoomFactor;
+        if (minZoom < 0.9) {
+            hasUltraWide = YES;
+        }
+    }
+    // Find the 0.5x button in the stack and show/hide it
+    for (UIView *subview in self.view.subviews) {
+        if ([subview isKindOfClass:[UIStackView class]]) {
+            UIStackView *stack = (UIStackView *)subview;
+            if (stack.arrangedSubviews.count == 3) {
+                UIButton *btn05 = (UIButton *)stack.arrangedSubviews[0];
+                btn05.hidden = !hasUltraWide;
+                break;
+            }
+        }
+    }
+}
 
 - (void)viewDidLayoutSubviews
 {
