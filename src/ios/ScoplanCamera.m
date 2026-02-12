@@ -161,8 +161,8 @@
         self.pinchBaseZoom = self.currentZoomFactor;
     } else if (pinch.state == UIGestureRecognizerStateChanged) {
         CGFloat newZoom = self.pinchBaseZoom * pinch.scale;
-        // Clamp between 0.5x and 10x
-        newZoom = MAX(0.5, MIN(newZoom, 10.0));
+        // Clamp between 1.0x and 10x (UIImagePickerController doesn't support < 1.0)
+        newZoom = MAX(1.0, MIN(newZoom, 10.0));
         [self applyZoom:newZoom];
     }
 }
@@ -220,15 +220,8 @@
             [zoom05Btn addTarget:self action:@selector(zoom05xClicked:) forControlEvents:UIControlEventTouchUpInside];
             [zoom1xBtn addTarget:self action:@selector(zoom1xClicked:) forControlEvents:UIControlEventTouchUpInside];
             [zoom2xBtn addTarget:self action:@selector(zoom2xClicked:) forControlEvents:UIControlEventTouchUpInside];
-            // Hide 0.5x if no ultra-wide camera
-            if (@available(iOS 13.0, *)) {
-                AVCaptureDevice *ultraWide = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
-                if (!ultraWide) {
-                    zoom05Btn.hidden = YES;
-                }
-            } else {
-                zoom05Btn.hidden = YES;
-            }
+            // UIImagePickerController does not support ultra-wide — always hide 0.5x
+            zoom05Btn.hidden = YES;
             // Pinch-to-zoom
             UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinchZoom:)];
             [self.overLayView addGestureRecognizer:pinch];
