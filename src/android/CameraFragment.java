@@ -94,6 +94,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private int pictureCount = 0;
     private int photoLimit = 15;
     private ActivityResultLauncher<Intent> activityResultLauncher;
+    private static CameraEventListener sCameraEventListener;
     private CameraEventListener cameraEventListener;
     private int currentOrientation = -1;
     private boolean flashOn = false;
@@ -140,6 +141,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     public void setCameraEventListener(CameraEventListener cameraEventListener) {
         this.cameraEventListener = cameraEventListener;
+        sCameraEventListener = cameraEventListener; // Keep static reference for fragment recreation
     }
 
     private void photoEditorCallBack(ActivityResult result) {
@@ -158,6 +160,11 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Restore listener if fragment was recreated by the system
+        if (this.cameraEventListener == null && sCameraEventListener != null) {
+            this.cameraEventListener = sCameraEventListener;
+        }
 
         cameraExecutor = Executors.newSingleThreadExecutor();
 
@@ -482,6 +489,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         if (cameraExecutor != null) {
             cameraExecutor.shutdown();
         }
+        // Clear static listener reference to avoid memory leak
+        sCameraEventListener = null;
     }
 
     public void setPhotoLimit(int limit){
@@ -511,7 +520,14 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         try {
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String fileName = "IMG_"+ timeStamp + ".jpg";
-            File photoFile = new File(this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), fileName);
+
+            // Use app-internal cache dir as fallback if getExternalFilesDir returns null
+            File picturesDir = this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            if (picturesDir == null) {
+                picturesDir = new File(this.getContext().getCacheDir(), "Pictures");
+                picturesDir.mkdirs();
+            }
+            File photoFile = new File(picturesDir, fileName);
 
             ImageCapture.OutputFileOptions outputOptions =
                 new ImageCapture.OutputFileOptions.Builder(photoFile).build();
@@ -522,18 +538,37 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             // Set flash mode
             imageCapture.setFlashMode(flashOn ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF);
 
+            final File finalPhotoFile = photoFile;
             imageCapture.takePicture(outputOptions, cameraExecutor,
                 new ImageCapture.OnImageSavedCallback() {
                     @Override
                     public void onImageSaved(@NonNull ImageCapture.OutputFileResults results) {
-                        // Read the saved file to create thumbnail bitmap
                         try {
-                            Bitmap bitmap = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
+                            // Decode with subsampling to avoid OutOfMemoryError on thumbnails
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inJustDecodeBounds = true;
+                            BitmapFactory.decodeFile(finalPhotoFile.getAbsolutePath(), opts);
+
+                            // Calculate inSampleSize for ~512px thumbnail
+                            int maxDim = Math.max(opts.outWidth, opts.outHeight);
+                            int inSampleSize = 1;
+                            while (maxDim / inSampleSize > 1024) {
+                                inSampleSize *= 2;
+                            }
+
+                            BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
+                            decodeOpts.inSampleSize = inSampleSize;
+                            Bitmap bitmap = BitmapFactory.decodeFile(finalPhotoFile.getAbsolutePath(), decodeOpts);
+
                             if (bitmap != null) {
-                                onImageCapture(photoFile, bitmap);
+                                onImageCapture(finalPhotoFile, bitmap);
                             } else {
                                 onImageBuildFailed(new IOException("Failed to decode captured image"));
                             }
+                        } catch (OutOfMemoryError oom) {
+                            Log.e(SCOPLAN_TAG, "OOM decoding thumbnail", oom);
+                            // Still report success with null bitmap — file is saved
+                            onImageCapture(finalPhotoFile, null);
                         } catch (Exception e) {
                             onImageBuildFailed(e);
                         }
@@ -561,7 +596,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
                 if (isAdded()) {
-                    souche.setImageBitmap(bitmap);
+                    if (bitmap != null) {
+                        souche.setImageBitmap(bitmap);
+                    }
                     defineViewVisibility();
                 }
             });
@@ -604,10 +641,88 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         progressBar.setVisibility(View.GONE);
     }
 
+    /**
+     * Downscale an image file if it exceeds MAX_EDITOR_PIXELS to prevent
+     * "Canvas: trying to draw too large bitmap" in PhotoEditorActivity.
+     * The resized image replaces the original file and the path in pictures list is updated.
+     */
+    private static final int MAX_EDITOR_DIMENSION = 4096;
+
+    private String downscaleForEditor(String imagePath) {
+        try {
+            // Decode bounds only
+            BitmapFactory.Options boundsOpts = new BitmapFactory.Options();
+            boundsOpts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(imagePath, boundsOpts);
+
+            int origW = boundsOpts.outWidth;
+            int origH = boundsOpts.outHeight;
+
+            // If image is within limits, no need to resize
+            if (origW <= MAX_EDITOR_DIMENSION && origH <= MAX_EDITOR_DIMENSION) {
+                return imagePath;
+            }
+
+            // Calculate inSampleSize for initial downsampling
+            int inSampleSize = 1;
+            while (origW / inSampleSize > MAX_EDITOR_DIMENSION || origH / inSampleSize > MAX_EDITOR_DIMENSION) {
+                inSampleSize *= 2;
+            }
+
+            BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
+            decodeOpts.inSampleSize = inSampleSize;
+            Bitmap sampled = BitmapFactory.decodeFile(imagePath, decodeOpts);
+
+            if (sampled == null) {
+                return imagePath;
+            }
+
+            // Fine-scale to fit exactly within MAX_EDITOR_DIMENSION
+            int sampledW = sampled.getWidth();
+            int sampledH = sampled.getHeight();
+            Bitmap finalBitmap;
+            if (sampledW > MAX_EDITOR_DIMENSION || sampledH > MAX_EDITOR_DIMENSION) {
+                float scale = Math.min(
+                    (float) MAX_EDITOR_DIMENSION / sampledW,
+                    (float) MAX_EDITOR_DIMENSION / sampledH
+                );
+                int targetW = Math.round(sampledW * scale);
+                int targetH = Math.round(sampledH * scale);
+                finalBitmap = Bitmap.createScaledBitmap(sampled, targetW, targetH, true);
+                if (finalBitmap != sampled) {
+                    sampled.recycle();
+                }
+            } else {
+                finalBitmap = sampled;
+            }
+
+            // Write resized image to a new file (keep original intact for final result)
+            File originalFile = new File(imagePath);
+            File resizedFile = new File(originalFile.getParent(),
+                "editor_" + originalFile.getName());
+            OutputStream out = new FileOutputStream(resizedFile);
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            out.flush();
+            out.close();
+            finalBitmap.recycle();
+
+            return resizedFile.getAbsolutePath();
+        } catch (Exception e) {
+            Log.e(SCOPLAN_TAG, "Error downscaling image for editor", e);
+            Sentry.captureException(e);
+            return imagePath; // Fallback: use original
+        } catch (OutOfMemoryError oom) {
+            Log.e(SCOPLAN_TAG, "OOM downscaling image for editor", oom);
+            return imagePath; // Fallback: use original
+        }
+    }
+
     private void startDrawing() {
         Intent dsPhotoEditorIntent = new Intent(getContext(), PhotoEditorActivity.class);
         String pc = pictures.get(pictures.size() - 1);
-        dsPhotoEditorIntent.setData(Uri.fromFile(new File(pc)));
+        // Downscale image to avoid "Canvas: trying to draw too large" crash
+        String editorPath = downscaleForEditor(pc);
+        dsPhotoEditorIntent.setData(Uri.fromFile(new File(editorPath)));
         int[] toolsToHide = {
             PhotoEditorActivity.TOOL_ORIENTATION,
             PhotoEditorActivity.TOOL_FRAME,
@@ -645,7 +760,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         } else if(
             view.getId() == this.fakeR.getId("valid_btn")
         ) {
-            this.cameraEventListener.onUserValid(this.pictures);
+            if (this.cameraEventListener != null) {
+                this.cameraEventListener.onUserValid(this.pictures);
+            }
             this.pictures = new ArrayList<>();
         } else if(
             view.getId() == this.fakeR.getId("flash_btn")
@@ -668,12 +785,19 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void cancelTakePhoto() {
+        if (pictures.isEmpty() && cameraEventListener != null) {
+            // No photos taken, just close without confirmation
+            cameraEventListener.onUserCancel();
+            return;
+        }
         AlertDialog.Builder alert = new AlertDialog.Builder(getContext());
         alert.setMessage("Voulez-vous sortir sans enregistrer la photo")
             .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
-                    cameraEventListener.onUserCancel();
+                    if (cameraEventListener != null) {
+                        cameraEventListener.onUserCancel();
+                    }
                 }
             })
             .setNegativeButton("Non", new DialogInterface.OnClickListener() {
