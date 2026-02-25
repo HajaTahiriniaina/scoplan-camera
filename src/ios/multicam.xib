@@ -87,6 +87,68 @@
                         </userDefinedRuntimeAttribute>
                     </userDefinedRuntimeAttributes>
                 </button>
+                <stackView opaque="NO" tag="20" contentMode="scaleToFill" distribution="equalSpacing" spacing="4" translatesAutoresizingMaskIntoConstraints="NO" id="zoomStack01">
+                    <rect key="frame" x="127" y="560" width="121" height="28"/>
+                    <subviews>
+                        <button opaque="NO" tag="21" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="zoom05Btn">
+                            <rect key="frame" x="0" y="0" width="37" height="28"/>
+                            <constraints>
+                                <constraint firstAttribute="width" constant="37" id="z05w"/>
+                                <constraint firstAttribute="height" constant="28" id="z05h"/>
+                            </constraints>
+                            <state key="normal" title="0.5">
+                                <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            </state>
+                            <fontDescription key="fontDescription" type="boldSystem" pointSize="12"/>
+                            <userDefinedRuntimeAttributes>
+                                <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                    <real key="value" value="14"/>
+                                </userDefinedRuntimeAttribute>
+                                <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                                    <boolean key="value" value="YES"/>
+                                </userDefinedRuntimeAttribute>
+                            </userDefinedRuntimeAttributes>
+                        </button>
+                        <button opaque="NO" tag="22" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="zoom1Btn">
+                            <rect key="frame" x="41" y="0" width="37" height="28"/>
+                            <constraints>
+                                <constraint firstAttribute="width" constant="37" id="z1w"/>
+                                <constraint firstAttribute="height" constant="28" id="z1h"/>
+                            </constraints>
+                            <state key="normal" title="1x">
+                                <color key="titleColor" red="1" green="0.84313725490196079" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
+                            </state>
+                            <fontDescription key="fontDescription" type="boldSystem" pointSize="12"/>
+                            <userDefinedRuntimeAttributes>
+                                <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                    <real key="value" value="14"/>
+                                </userDefinedRuntimeAttribute>
+                                <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                                    <boolean key="value" value="YES"/>
+                                </userDefinedRuntimeAttribute>
+                            </userDefinedRuntimeAttributes>
+                        </button>
+                        <button opaque="NO" tag="23" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="zoom2Btn">
+                            <rect key="frame" x="82" y="0" width="37" height="28"/>
+                            <constraints>
+                                <constraint firstAttribute="width" constant="37" id="z2w"/>
+                                <constraint firstAttribute="height" constant="28" id="z2h"/>
+                            </constraints>
+                            <state key="normal" title="2x">
+                                <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            </state>
+                            <fontDescription key="fontDescription" type="boldSystem" pointSize="12"/>
+                            <userDefinedRuntimeAttributes>
+                                <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                    <real key="value" value="14"/>
+                                </userDefinedRuntimeAttribute>
+                                <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                                    <boolean key="value" value="YES"/>
+                                </userDefinedRuntimeAttribute>
+                            </userDefinedRuntimeAttributes>
+                        </button>
+                    </subviews>
+                </stackView>
                 <button opaque="NO" tag="1" contentMode="center" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="f3a-n0-68n">
                     <rect key="frame" x="162.5" y="592" width="50" height="50"/>
                     <constraints>
@@ -109,6 +171,8 @@
             <constraints>
                 <constraint firstItem="SRs-0J-vwF" firstAttribute="leading" secondItem="w0n-Df-NWM" secondAttribute="leading" id="Hhi-Wj-KS9"/>
                 <constraint firstItem="w0n-Df-NWM" firstAttribute="bottom" secondItem="f3a-n0-68n" secondAttribute="bottom" constant="25" id="Oi4-t0-CQ6"/>
+                <constraint firstItem="zoomStack01" firstAttribute="centerX" secondItem="2Si-cO-KSW" secondAttribute="centerX" id="zsCX"/>
+                <constraint firstItem="f3a-n0-68n" firstAttribute="top" secondItem="zoomStack01" secondAttribute="bottom" constant="8" id="zsBot"/>
                 <constraint firstItem="f3a-n0-68n" firstAttribute="centerX" secondItem="2Si-cO-KSW" secondAttribute="centerX" id="SUH-d2-dsP"/>
                 <constraint firstItem="w0n-Df-NWM" firstAttribute="bottom" secondItem="utO-5P-M5r" secondAttribute="bottom" constant="35" id="Sx5-aI-blt"/>
                 <constraint firstItem="w0n-Df-NWM" firstAttribute="trailing" secondItem="utO-5P-M5r" secondAttribute="trailing" constant="20" id="WjK-KC-LQF"/>

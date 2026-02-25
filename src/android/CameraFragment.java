@@ -24,12 +24,15 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.camera.core.Camera;
+import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.Preview;
+import androidx.camera.core.ZoomState;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
+import androidx.lifecycle.LiveData;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
@@ -41,11 +44,13 @@ import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.OrientationEventListener;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.WindowInsets;
+import androidx.core.view.WindowInsetsCompat;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -89,6 +94,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private int pictureCount = 0;
     private int photoLimit = 15;
     private ActivityResultLauncher<Intent> activityResultLauncher;
+    private static CameraEventListener sCameraEventListener;
     private CameraEventListener cameraEventListener;
     private int currentOrientation = -1;
     private boolean flashOn = false;
@@ -99,6 +105,14 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private Camera camera;
     private ImageCapture imageCapture;
     private ExecutorService cameraExecutor;
+    private ScaleGestureDetector scaleGestureDetector;
+    private Button zoom05xBtn;
+    private Button zoom1xBtn;
+    private Button zoom2xBtn;
+    private boolean hasUltraWide = false;
+    private boolean usingUltraWide = false;
+    private CameraSelector ultraWideSelector;
+    private CameraSelector mainSelector;
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
@@ -127,6 +141,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     public void setCameraEventListener(CameraEventListener cameraEventListener) {
         this.cameraEventListener = cameraEventListener;
+        sCameraEventListener = cameraEventListener; // Keep static reference for fragment recreation
     }
 
     private void photoEditorCallBack(ActivityResult result) {
@@ -145,6 +160,11 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Restore listener if fragment was recreated by the system
+        if (this.cameraEventListener == null && sCameraEventListener != null) {
+            this.cameraEventListener = sCameraEventListener;
+        }
 
         cameraExecutor = Executors.newSingleThreadExecutor();
 
@@ -184,6 +204,29 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         cameraFrameLayout.setBackgroundColor(Color.rgb(0, 0, 0));
         previewView = view.findViewById(this.fakeR.getId("cameraView"));
         previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER);
+
+        // Pinch-to-zoom — exploits full device zoom range (e.g. x10, x30)
+        scaleGestureDetector = new ScaleGestureDetector(requireContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                if (camera == null) return true;
+                ZoomState zoomState = camera.getCameraInfo().getZoomState().getValue();
+                if (zoomState == null) return true;
+                float currentZoomRatio = zoomState.getZoomRatio();
+                float delta = detector.getScaleFactor();
+                float newRatio = currentZoomRatio * delta;
+                // Clamp to device min/max
+                newRatio = Math.max(zoomState.getMinZoomRatio(), Math.min(zoomState.getMaxZoomRatio(), newRatio));
+                camera.getCameraControl().setZoomRatio(newRatio);
+                updateZoomButtonHighlights();
+                return true;
+            }
+        });
+        previewView.setOnTouchListener((v, event) -> {
+            scaleGestureDetector.onTouchEvent(event);
+            return true;
+        });
+
         drawOn2 = view.findViewById(this.fakeR.getId("draw_on_2"));
         drawOn = view.findViewById(this.fakeR.getId("draw_on"));
         souche = view.findViewById(this.fakeR.getId("image_souche"));
@@ -191,6 +234,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         cancelBtn = view.findViewById(this.fakeR.getId("cancel"));
         cancelBtn2 = view.findViewById(this.fakeR.getId("cancel_btn"));
         flashBtn = view.findViewById(this.fakeR.getId("flash_btn"));
+        zoom05xBtn = view.findViewById(this.fakeR.getId("zoom_05x"));
+        zoom1xBtn = view.findViewById(this.fakeR.getId("zoom_1x"));
+        zoom2xBtn = view.findViewById(this.fakeR.getId("zoom_2x"));
 
         camButton.setOnClickListener(this);
         drawOn2.setOnClickListener(this);
@@ -200,6 +246,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         cancelBtn2.setOnClickListener(this);
         validationButton.setOnClickListener(this);
         flashBtn.setOnClickListener(this);
+        zoom05xBtn.setOnClickListener(this);
+        zoom1xBtn.setOnClickListener(this);
+        zoom2xBtn.setOnClickListener(this);
         this.defineViewVisibility();
 
         return view;
@@ -233,6 +282,10 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     }
 
     private void bindCameraUseCases() {
+        bindCameraWithSelector(false);
+    }
+
+    private void bindCameraWithSelector(boolean useUltraWide) {
         if (cameraProvider == null || !isAdded()) return;
 
         // Unbind all before rebinding
@@ -247,8 +300,18 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             .setJpegQuality(65)
             .build();
 
-        // Select back camera
-        CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+        // Detect ultra-wide camera availability
+        detectUltraWideCamera();
+
+        // Select camera
+        CameraSelector cameraSelector;
+        if (useUltraWide && hasUltraWide && ultraWideSelector != null) {
+            cameraSelector = ultraWideSelector;
+            usingUltraWide = true;
+        } else {
+            cameraSelector = mainSelector != null ? mainSelector : CameraSelector.DEFAULT_BACK_CAMERA;
+            usingUltraWide = false;
+        }
 
         try {
             // Bind use cases to lifecycle
@@ -257,8 +320,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             // Connect preview to PreviewView
             preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-            // Setup zoom
-            setupZoom();
+            // Update zoom button highlights
+            updateZoomButtonHighlights();
         } catch (Exception e) {
             Log.e(SCOPLAN_TAG, "Error binding camera use cases", e);
             Sentry.captureException(e);
@@ -266,9 +329,99 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         }
     }
 
-    private void setupZoom() {
+    private void detectUltraWideCamera() {
+        if (cameraProvider == null) return;
+        try {
+            // Main camera (default back) — typically lens facing back with normal focal length
+            mainSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+
+            // Try to find ultra-wide: a back camera that is NOT the default
+            // CameraX on devices with multiple back cameras can select via CameraSelector
+            // We check if there's a camera with LENS_FACING_BACK that has a shorter focal length
+            List<CameraInfo> availableCameras = cameraProvider.getAvailableCameraInfos();
+            hasUltraWide = false;
+
+            for (CameraInfo cameraInfo : availableCameras) {
+                try {
+                    // Check if this is a back-facing camera
+                    CameraSelector testSelector = cameraInfo.getCameraSelector();
+                    // Try to see if it's different from default back camera
+                    // Ultra-wide cameras have intrinsicZoomRatio < 1.0
+                    LiveData<ZoomState> zoomStateLiveData = cameraInfo.getZoomState();
+                    ZoomState zoomState = zoomStateLiveData.getValue();
+                    if (zoomState != null) {
+                        float minZoom = zoomState.getMinZoomRatio();
+                        // On most devices, the ultra-wide has a minZoomRatio < 1.0
+                        // or the intrinsic zoom ratio is < 1.0
+                        // We check all cameras and find one with smaller minimum zoom
+                        if (minZoom < 0.9f) {
+                            // This camera likely supports ultra-wide range natively
+                            hasUltraWide = true;
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
+            // If device supports zoom ratio < 1.0 on main camera, it means the main camera
+            // can zoom out to ultra-wide natively (logical multi-camera)
+            try {
+                Camera testCamera = cameraProvider.bindToLifecycle(this, mainSelector);
+                ZoomState zoomState = testCamera.getCameraInfo().getZoomState().getValue();
+                if (zoomState != null && zoomState.getMinZoomRatio() < 0.9f) {
+                    hasUltraWide = true;
+                }
+                cameraProvider.unbindAll();
+            } catch (Exception ignored) {
+                // If we can't test, just continue without ultra-wide
+            }
+
+            // Show/hide 0.5x button
+            if (hasUltraWide) {
+                zoom05xBtn.setVisibility(View.VISIBLE);
+            } else {
+                zoom05xBtn.setVisibility(View.GONE);
+            }
+        } catch (Exception e) {
+            Log.w(SCOPLAN_TAG, "Error detecting ultra-wide camera", e);
+            hasUltraWide = false;
+            zoom05xBtn.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateZoomButtonHighlights() {
+        // Reset all to white
+        zoom05xBtn.setTextColor(Color.WHITE);
+        zoom1xBtn.setTextColor(Color.WHITE);
+        zoom2xBtn.setTextColor(Color.WHITE);
+
         if (camera == null) return;
-        cameraSeekBarListener = new scoplan.camera.CameraSeekBarListener(camera, zoomBar);
+        ZoomState zoomState = camera.getCameraInfo().getZoomState().getValue();
+        if (zoomState == null) return;
+
+        float currentRatio = zoomState.getZoomRatio();
+
+        if (usingUltraWide || currentRatio < 0.9f) {
+            zoom05xBtn.setTextColor(Color.parseColor("#FFD700"));
+        } else if (currentRatio < 1.5f) {
+            zoom1xBtn.setTextColor(Color.parseColor("#FFD700"));
+        } else {
+            zoom2xBtn.setTextColor(Color.parseColor("#FFD700"));
+        }
+    }
+
+    private void setZoomRatio(float ratio) {
+        if (camera == null) return;
+        ZoomState zoomState = camera.getCameraInfo().getZoomState().getValue();
+        if (zoomState == null) return;
+
+        float minRatio = zoomState.getMinZoomRatio();
+        float maxRatio = zoomState.getMaxZoomRatio();
+
+        // Clamp to device limits
+        float targetRatio = Math.max(minRatio, Math.min(maxRatio, ratio));
+        camera.getCameraControl().setZoomRatio(targetRatio);
+        updateZoomButtonHighlights();
     }
 
     private int getTargetRotation() {
@@ -287,17 +440,19 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         startCamera();
         this.orientationEventListener.enable();
 
-        Window window = requireActivity().getWindow();
+        try {
+            Window window = requireActivity().getWindow();
+            // Enable edge-to-edge mode but keep system bars visible
+            WindowCompat.setDecorFitsSystemWindows(window, false);
 
-        // Enable edge-to-edge mode but keep system bars visible
-        WindowCompat.setDecorFitsSystemWindows(window, false);
+            WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(window, window.getDecorView());
 
-        WindowInsetsControllerCompat controller =
-            WindowCompat.getInsetsController(window, window.getDecorView());
-
-        if (controller != null) {
-            // Show status and navigation bars
-            controller.show(WindowInsets.Type.systemBars());
+            if (controller != null) {
+                controller.show(WindowInsetsCompat.Type.systemBars());
+            }
+        } catch (Exception e) {
+            Log.w(SCOPLAN_TAG, "Edge-to-edge not supported on this device", e);
         }
     }
 
@@ -305,17 +460,22 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     public void onPause() {
         super.onPause();
         this.orientationEventListener.disable();
-        Window window = requireActivity().getWindow();
 
-        // Restore normal window mode when leaving camera
-        WindowCompat.setDecorFitsSystemWindows(window, true);
+        try {
+            Window window = requireActivity().getWindow();
+            // Restore normal window mode when leaving camera
+            WindowCompat.setDecorFitsSystemWindows(window, true);
 
-        WindowInsetsControllerCompat controller =
-            WindowCompat.getInsetsController(window, window.getDecorView());
+            WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(window, window.getDecorView());
 
-        if (controller != null) {
-            controller.show(WindowInsets.Type.systemBars());
+            if (controller != null) {
+                controller.show(WindowInsetsCompat.Type.systemBars());
+            }
+        } catch (Exception e) {
+            Log.w(SCOPLAN_TAG, "Edge-to-edge restore not supported on this device", e);
         }
+
         // CameraX unbinds automatically via lifecycle, but we can explicitly unbind
         if (cameraProvider != null) {
             cameraProvider.unbindAll();
@@ -329,6 +489,8 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         if (cameraExecutor != null) {
             cameraExecutor.shutdown();
         }
+        // Clear static listener reference to avoid memory leak
+        sCameraEventListener = null;
     }
 
     public void setPhotoLimit(int limit){
@@ -358,7 +520,14 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         try {
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String fileName = "IMG_"+ timeStamp + ".jpg";
-            File photoFile = new File(this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), fileName);
+
+            // Use app-internal cache dir as fallback if getExternalFilesDir returns null
+            File picturesDir = this.getContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            if (picturesDir == null) {
+                picturesDir = new File(this.getContext().getCacheDir(), "Pictures");
+                picturesDir.mkdirs();
+            }
+            File photoFile = new File(picturesDir, fileName);
 
             ImageCapture.OutputFileOptions outputOptions =
                 new ImageCapture.OutputFileOptions.Builder(photoFile).build();
@@ -369,18 +538,37 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             // Set flash mode
             imageCapture.setFlashMode(flashOn ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF);
 
+            final File finalPhotoFile = photoFile;
             imageCapture.takePicture(outputOptions, cameraExecutor,
                 new ImageCapture.OnImageSavedCallback() {
                     @Override
                     public void onImageSaved(@NonNull ImageCapture.OutputFileResults results) {
-                        // Read the saved file to create thumbnail bitmap
                         try {
-                            Bitmap bitmap = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
+                            // Decode with subsampling to avoid OutOfMemoryError on thumbnails
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inJustDecodeBounds = true;
+                            BitmapFactory.decodeFile(finalPhotoFile.getAbsolutePath(), opts);
+
+                            // Calculate inSampleSize for ~512px thumbnail
+                            int maxDim = Math.max(opts.outWidth, opts.outHeight);
+                            int inSampleSize = 1;
+                            while (maxDim / inSampleSize > 1024) {
+                                inSampleSize *= 2;
+                            }
+
+                            BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
+                            decodeOpts.inSampleSize = inSampleSize;
+                            Bitmap bitmap = BitmapFactory.decodeFile(finalPhotoFile.getAbsolutePath(), decodeOpts);
+
                             if (bitmap != null) {
-                                onImageCapture(photoFile, bitmap);
+                                onImageCapture(finalPhotoFile, bitmap);
                             } else {
                                 onImageBuildFailed(new IOException("Failed to decode captured image"));
                             }
+                        } catch (OutOfMemoryError oom) {
+                            Log.e(SCOPLAN_TAG, "OOM decoding thumbnail", oom);
+                            // Still report success with null bitmap — file is saved
+                            onImageCapture(finalPhotoFile, null);
                         } catch (Exception e) {
                             onImageBuildFailed(e);
                         }
@@ -408,7 +596,9 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
                 if (isAdded()) {
-                    souche.setImageBitmap(bitmap);
+                    if (bitmap != null) {
+                        souche.setImageBitmap(bitmap);
+                    }
                     defineViewVisibility();
                 }
             });
@@ -451,10 +641,88 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         progressBar.setVisibility(View.GONE);
     }
 
+    /**
+     * Downscale an image file if it exceeds MAX_EDITOR_PIXELS to prevent
+     * "Canvas: trying to draw too large bitmap" in PhotoEditorActivity.
+     * The resized image replaces the original file and the path in pictures list is updated.
+     */
+    private static final int MAX_EDITOR_DIMENSION = 4096;
+
+    private String downscaleForEditor(String imagePath) {
+        try {
+            // Decode bounds only
+            BitmapFactory.Options boundsOpts = new BitmapFactory.Options();
+            boundsOpts.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(imagePath, boundsOpts);
+
+            int origW = boundsOpts.outWidth;
+            int origH = boundsOpts.outHeight;
+
+            // If image is within limits, no need to resize
+            if (origW <= MAX_EDITOR_DIMENSION && origH <= MAX_EDITOR_DIMENSION) {
+                return imagePath;
+            }
+
+            // Calculate inSampleSize for initial downsampling
+            int inSampleSize = 1;
+            while (origW / inSampleSize > MAX_EDITOR_DIMENSION || origH / inSampleSize > MAX_EDITOR_DIMENSION) {
+                inSampleSize *= 2;
+            }
+
+            BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
+            decodeOpts.inSampleSize = inSampleSize;
+            Bitmap sampled = BitmapFactory.decodeFile(imagePath, decodeOpts);
+
+            if (sampled == null) {
+                return imagePath;
+            }
+
+            // Fine-scale to fit exactly within MAX_EDITOR_DIMENSION
+            int sampledW = sampled.getWidth();
+            int sampledH = sampled.getHeight();
+            Bitmap finalBitmap;
+            if (sampledW > MAX_EDITOR_DIMENSION || sampledH > MAX_EDITOR_DIMENSION) {
+                float scale = Math.min(
+                    (float) MAX_EDITOR_DIMENSION / sampledW,
+                    (float) MAX_EDITOR_DIMENSION / sampledH
+                );
+                int targetW = Math.round(sampledW * scale);
+                int targetH = Math.round(sampledH * scale);
+                finalBitmap = Bitmap.createScaledBitmap(sampled, targetW, targetH, true);
+                if (finalBitmap != sampled) {
+                    sampled.recycle();
+                }
+            } else {
+                finalBitmap = sampled;
+            }
+
+            // Write resized image to a new file (keep original intact for final result)
+            File originalFile = new File(imagePath);
+            File resizedFile = new File(originalFile.getParent(),
+                "editor_" + originalFile.getName());
+            OutputStream out = new FileOutputStream(resizedFile);
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            out.flush();
+            out.close();
+            finalBitmap.recycle();
+
+            return resizedFile.getAbsolutePath();
+        } catch (Exception e) {
+            Log.e(SCOPLAN_TAG, "Error downscaling image for editor", e);
+            Sentry.captureException(e);
+            return imagePath; // Fallback: use original
+        } catch (OutOfMemoryError oom) {
+            Log.e(SCOPLAN_TAG, "OOM downscaling image for editor", oom);
+            return imagePath; // Fallback: use original
+        }
+    }
+
     private void startDrawing() {
         Intent dsPhotoEditorIntent = new Intent(getContext(), PhotoEditorActivity.class);
         String pc = pictures.get(pictures.size() - 1);
-        dsPhotoEditorIntent.setData(Uri.fromFile(new File(pc)));
+        // Downscale image to avoid "Canvas: trying to draw too large" crash
+        String editorPath = downscaleForEditor(pc);
+        dsPhotoEditorIntent.setData(Uri.fromFile(new File(editorPath)));
         int[] toolsToHide = {
             PhotoEditorActivity.TOOL_ORIENTATION,
             PhotoEditorActivity.TOOL_FRAME,
@@ -492,23 +760,44 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         } else if(
             view.getId() == this.fakeR.getId("valid_btn")
         ) {
-            this.cameraEventListener.onUserValid(this.pictures);
+            if (this.cameraEventListener != null) {
+                this.cameraEventListener.onUserValid(this.pictures);
+            }
             this.pictures = new ArrayList<>();
         } else if(
             view.getId() == this.fakeR.getId("flash_btn")
         ) {
             this.flashOn = !this.flashOn;
             this.flashBtn.setImageResource(this.fakeR.getDrawable(flashOn ? "flash_on" : "flash"));
+        } else if(view.getId() == this.fakeR.getId("zoom_05x")) {
+            // 0.5x — use min zoom ratio (ultra-wide range)
+            if (camera != null) {
+                ZoomState zoomState = camera.getCameraInfo().getZoomState().getValue();
+                if (zoomState != null) {
+                    setZoomRatio(zoomState.getMinZoomRatio());
+                }
+            }
+        } else if(view.getId() == this.fakeR.getId("zoom_1x")) {
+            setZoomRatio(1.0f);
+        } else if(view.getId() == this.fakeR.getId("zoom_2x")) {
+            setZoomRatio(2.0f);
         }
     }
 
     private void cancelTakePhoto() {
+        if (pictures.isEmpty() && cameraEventListener != null) {
+            // No photos taken, just close without confirmation
+            cameraEventListener.onUserCancel();
+            return;
+        }
         AlertDialog.Builder alert = new AlertDialog.Builder(getContext());
         alert.setMessage("Voulez-vous sortir sans enregistrer la photo")
             .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
-                    cameraEventListener.onUserCancel();
+                    if (cameraEventListener != null) {
+                        cameraEventListener.onUserCancel();
+                    }
                 }
             })
             .setNegativeButton("Non", new DialogInterface.OnClickListener() {

@@ -59,6 +59,77 @@
                                     <action selector="backtowebview:" destination="AA8-Jf-iAm" eventType="touchUpInside" id="8HQ-lG-VyA"/>
                                 </connections>
                             </button>
+                            <stackView opaque="NO" contentMode="scaleToFill" distribution="equalSpacing" spacing="4" translatesAutoresizingMaskIntoConstraints="NO" id="sbZoomStack">
+                                <rect key="frame" x="147" y="721" width="121" height="28"/>
+                                <subviews>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="sbZoom05">
+                                        <rect key="frame" x="0" y="0" width="37" height="28"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="37" id="sbZ05w"/>
+                                            <constraint firstAttribute="height" constant="28" id="sbZ05h"/>
+                                        </constraints>
+                                        <state key="normal" title="0.5">
+                                            <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        </state>
+                                        <fontDescription key="fontDescription" type="boldSystem" pointSize="12"/>
+                                        <userDefinedRuntimeAttributes>
+                                            <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                                <real key="value" value="14"/>
+                                            </userDefinedRuntimeAttribute>
+                                            <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                                                <boolean key="value" value="YES"/>
+                                            </userDefinedRuntimeAttribute>
+                                        </userDefinedRuntimeAttributes>
+                                        <connections>
+                                            <action selector="zoom05x:" destination="AA8-Jf-iAm" eventType="touchUpInside" id="sbZ05act"/>
+                                        </connections>
+                                    </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="sbZoom1x">
+                                        <rect key="frame" x="41" y="0" width="37" height="28"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="37" id="sbZ1w"/>
+                                            <constraint firstAttribute="height" constant="28" id="sbZ1h"/>
+                                        </constraints>
+                                        <state key="normal" title="1x">
+                                            <color key="titleColor" red="1" green="0.84313725490196079" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
+                                        </state>
+                                        <fontDescription key="fontDescription" type="boldSystem" pointSize="12"/>
+                                        <userDefinedRuntimeAttributes>
+                                            <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                                <real key="value" value="14"/>
+                                            </userDefinedRuntimeAttribute>
+                                            <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                                                <boolean key="value" value="YES"/>
+                                            </userDefinedRuntimeAttribute>
+                                        </userDefinedRuntimeAttributes>
+                                        <connections>
+                                            <action selector="zoom1x:" destination="AA8-Jf-iAm" eventType="touchUpInside" id="sbZ1act"/>
+                                        </connections>
+                                    </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="sbZoom2x">
+                                        <rect key="frame" x="82" y="0" width="37" height="28"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="37" id="sbZ2w"/>
+                                            <constraint firstAttribute="height" constant="28" id="sbZ2h"/>
+                                        </constraints>
+                                        <state key="normal" title="2x">
+                                            <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        </state>
+                                        <fontDescription key="fontDescription" type="boldSystem" pointSize="12"/>
+                                        <userDefinedRuntimeAttributes>
+                                            <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                                <real key="value" value="14"/>
+                                            </userDefinedRuntimeAttribute>
+                                            <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                                                <boolean key="value" value="YES"/>
+                                            </userDefinedRuntimeAttribute>
+                                        </userDefinedRuntimeAttributes>
+                                        <connections>
+                                            <action selector="zoom2x:" destination="AA8-Jf-iAm" eventType="touchUpInside" id="sbZ2act"/>
+                                        </connections>
+                                    </button>
+                                </subviews>
+                            </stackView>
                             <button opaque="NO" contentMode="center" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="cRf-Sp-1y2">
                                 <rect key="frame" x="182" y="753" width="50" height="50"/>
                                 <constraints>
@@ -85,6 +156,8 @@
                             <constraint firstItem="jij-t7-zCY" firstAttribute="bottom" secondItem="YrK-DJ-ony" secondAttribute="bottom" constant="25" id="0MC-Rx-Lgu"/>
                             <constraint firstItem="YrK-DJ-ony" firstAttribute="centerX" secondItem="8ze-qw-dRA" secondAttribute="centerX" id="56H-C7-K1g"/>
                             <constraint firstItem="Dph-cD-OZJ" firstAttribute="bottom" secondItem="8ze-qw-dRA" secondAttribute="bottom" id="Bla-Mv-ywP"/>
+                            <constraint firstItem="sbZoomStack" firstAttribute="centerX" secondItem="8ze-qw-dRA" secondAttribute="centerX" id="sbZsCX"/>
+                            <constraint firstItem="cRf-Sp-1y2" firstAttribute="top" secondItem="sbZoomStack" secondAttribute="bottom" constant="8" id="sbZsBot"/>
                             <constraint firstItem="cRf-Sp-1y2" firstAttribute="centerX" secondItem="8ze-qw-dRA" secondAttribute="centerX" id="IwK-Lt-F2A"/>
                             <constraint firstItem="Dph-cD-OZJ" firstAttribute="leading" secondItem="8ze-qw-dRA" secondAttribute="leading" id="ZPE-Xb-bhT"/>
                             <constraint firstItem="jij-t7-zCY" firstAttribute="bottom" secondItem="cRf-Sp-1y2" secondAttribute="bottom" constant="25" id="d7J-t5-TqX"/>
