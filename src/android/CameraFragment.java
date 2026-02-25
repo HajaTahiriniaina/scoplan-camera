@@ -544,34 +544,40 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
                     @Override
                     public void onImageSaved(@NonNull ImageCapture.OutputFileResults results) {
                         try {
-                            // Decode with subsampling to avoid OutOfMemoryError on thumbnails
                             BitmapFactory.Options opts = new BitmapFactory.Options();
                             opts.inJustDecodeBounds = true;
                             BitmapFactory.decodeFile(finalPhotoFile.getAbsolutePath(), opts);
 
-                            // Calculate inSampleSize for ~512px thumbnail
+                            // Target max dimension (choose 512 or 1024)
+                            final int TARGET_SIZE = 1024;
+
                             int maxDim = Math.max(opts.outWidth, opts.outHeight);
                             int inSampleSize = 1;
-                            while (maxDim / inSampleSize > 1024) {
+                            while (maxDim / inSampleSize > TARGET_SIZE) {
                                 inSampleSize *= 2;
                             }
 
                             BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
                             decodeOpts.inSampleSize = inSampleSize;
-                            Bitmap bitmap = BitmapFactory.decodeFile(finalPhotoFile.getAbsolutePath(), decodeOpts);
+                            decodeOpts.inPreferredConfig = Bitmap.Config.RGB_565;
+
+                            Bitmap bitmap = BitmapFactory.decodeFile(
+                                    finalPhotoFile.getAbsolutePath(),
+                                    decodeOpts
+                            );
 
                             if (bitmap != null) {
                                 onImageCapture(finalPhotoFile, bitmap);
                             } else {
                                 onImageBuildFailed(new IOException("Failed to decode captured image"));
                             }
-                        } catch (OutOfMemoryError oom) {
-                            Log.e(SCOPLAN_TAG, "OOM decoding thumbnail", oom);
-                            // Still report success with null bitmap — file is saved
-                            onImageCapture(finalPhotoFile, null);
-                        } catch (Exception e) {
-                            onImageBuildFailed(e);
-                        }
+
+                            } catch (OutOfMemoryError oom) {
+                                Log.e(SCOPLAN_TAG, "OOM decoding thumbnail", oom);
+                                onImageCapture(finalPhotoFile, null);
+                            } catch (Exception e) {
+                                onImageBuildFailed(e);
+                            }
                     }
 
                     @Override
