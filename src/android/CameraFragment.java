@@ -15,7 +15,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
-import com.dsphotoeditor.sdk.utils.DsPhotoEditorConstants;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import androidx.activity.result.ActivityResult;
@@ -82,7 +81,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private PreviewView previewView;
     private View cameraTopBar;
     private ImageView souche;
-    private Button drawOn2;
     private ImageButton drawOn;
     private ImageButton cancelBtn;
     private Button cancelBtn2;
@@ -93,7 +91,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     private List<String> pictures = new ArrayList<String>();
     private int pictureCount = 0;
     private int photoLimit = 15;
-    private ActivityResultLauncher<Intent> activityResultLauncher;
     private static CameraEventListener sCameraEventListener;
     private CameraEventListener cameraEventListener;
     private int currentOrientation = -1;
@@ -131,30 +128,11 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
 
     public CameraFragment() {
         // Required empty public constructor
-        activityResultLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                photoEditorCallBack(result);
-            }
-        );
     }
 
     public void setCameraEventListener(CameraEventListener cameraEventListener) {
         this.cameraEventListener = cameraEventListener;
         sCameraEventListener = cameraEventListener; // Keep static reference for fragment recreation
-    }
-
-    private void photoEditorCallBack(ActivityResult result) {
-        if(result.getData() != null) {
-            Uri outputUri = result.getData().getData();
-            if(outputUri != null && outputUri.compareTo(Uri.parse("remove")) == 0){
-                pictures.remove(pictures.size() - 1);
-
-            } else if(outputUri != null){
-                pictures.set(pictures.size() - 1, outputUri.getPath());
-            }
-            defineViewVisibility();
-        }
     }
 
     @Override
@@ -227,7 +205,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             return true;
         });
 
-        drawOn2 = view.findViewById(this.fakeR.getId("draw_on_2"));
         drawOn = view.findViewById(this.fakeR.getId("draw_on"));
         souche = view.findViewById(this.fakeR.getId("image_souche"));
         cameraTopBar = view.findViewById(this.fakeR.getId("cameraTopBar"));
@@ -239,7 +216,6 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         zoom2xBtn = view.findViewById(this.fakeR.getId("zoom_2x"));
 
         camButton.setOnClickListener(this);
-        drawOn2.setOnClickListener(this);
         drawOn.setOnClickListener(this);
         souche.setOnClickListener(this);
         cancelBtn.setOnClickListener(this);
@@ -272,6 +248,10 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
+                // Fragment masqué (édition web) entre-temps : on ne reprend pas la caméra.
+                if (isHidden() || !isResumed()) {
+                    return;
+                }
                 bindCameraUseCases();
             } catch (Exception e) {
                 Log.e(SCOPLAN_TAG, "Error starting camera", e);
@@ -437,6 +417,19 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
     @Override
     public void onResume() {
         super.onResume();
+        // Pendant l'édition web la caméra reste masquée, même si l'app revient au premier plan.
+        if (!isHidden()) {
+            activateCamera();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        releaseCamera();
+    }
+
+    private void activateCamera() {
         startCamera();
         this.orientationEventListener.enable();
 
@@ -456,9 +449,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         }
     }
 
-    @Override
-    public void onPause() {
-        super.onPause();
+    private void releaseCamera() {
         this.orientationEventListener.disable();
 
         try {
@@ -647,104 +638,76 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         progressBar.setVisibility(View.GONE);
     }
 
-    /**
-     * Downscale an image file if it exceeds MAX_EDITOR_PIXELS to prevent
-     * "Canvas: trying to draw too large bitmap" in PhotoEditorActivity.
-     * The resized image replaces the original file and the path in pictures list is updated.
-     */
-    private static final int MAX_EDITOR_DIMENSION = 4096;
-
-    private String downscaleForEditor(String imagePath) {
-        try {
-            // Decode bounds only
-            BitmapFactory.Options boundsOpts = new BitmapFactory.Options();
-            boundsOpts.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(imagePath, boundsOpts);
-
-            int origW = boundsOpts.outWidth;
-            int origH = boundsOpts.outHeight;
-
-            // If image is within limits, no need to resize
-            if (origW <= MAX_EDITOR_DIMENSION && origH <= MAX_EDITOR_DIMENSION) {
-                return imagePath;
-            }
-
-            // Calculate inSampleSize for initial downsampling
-            int inSampleSize = 1;
-            while (origW / inSampleSize > MAX_EDITOR_DIMENSION || origH / inSampleSize > MAX_EDITOR_DIMENSION) {
-                inSampleSize *= 2;
-            }
-
-            BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
-            decodeOpts.inSampleSize = inSampleSize;
-            Bitmap sampled = BitmapFactory.decodeFile(imagePath, decodeOpts);
-
-            if (sampled == null) {
-                return imagePath;
-            }
-
-            // Fine-scale to fit exactly within MAX_EDITOR_DIMENSION
-            int sampledW = sampled.getWidth();
-            int sampledH = sampled.getHeight();
-            Bitmap finalBitmap;
-            if (sampledW > MAX_EDITOR_DIMENSION || sampledH > MAX_EDITOR_DIMENSION) {
-                float scale = Math.min(
-                    (float) MAX_EDITOR_DIMENSION / sampledW,
-                    (float) MAX_EDITOR_DIMENSION / sampledH
-                );
-                int targetW = Math.round(sampledW * scale);
-                int targetH = Math.round(sampledH * scale);
-                finalBitmap = Bitmap.createScaledBitmap(sampled, targetW, targetH, true);
-                if (finalBitmap != sampled) {
-                    sampled.recycle();
-                }
-            } else {
-                finalBitmap = sampled;
-            }
-
-            // Write resized image to a new file (keep original intact for final result)
-            File originalFile = new File(imagePath);
-            File resizedFile = new File(originalFile.getParent(),
-                "editor_" + originalFile.getName());
-            OutputStream out = new FileOutputStream(resizedFile);
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            out.flush();
-            out.close();
-            finalBitmap.recycle();
-
-            return resizedFile.getAbsolutePath();
-        } catch (Exception e) {
-            Log.e(SCOPLAN_TAG, "Error downscaling image for editor", e);
-            Sentry.captureException(e);
-            return imagePath; // Fallback: use original
-        } catch (OutOfMemoryError oom) {
-            Log.e(SCOPLAN_TAG, "OOM downscaling image for editor", oom);
-            return imagePath; // Fallback: use original
+    /** Demande l'édition de la dernière photo : l'éditeur web s'ouvre, la caméra est mise en pause. */
+    private void startDrawing() {
+        if (pictures.isEmpty() || cameraEventListener == null) {
+            return;
         }
+        int index = pictures.size() - 1;
+        cameraEventListener.onEditRequest(pictures.get(index), index);
     }
 
-    private void startDrawing() {
-        Intent dsPhotoEditorIntent = new Intent(getContext(), PhotoEditorActivity.class);
-        String pc = pictures.get(pictures.size() - 1);
-        // Downscale image to avoid "Canvas: trying to draw too large" crash
-        String editorPath = downscaleForEditor(pc);
-        dsPhotoEditorIntent.setData(Uri.fromFile(new File(editorPath)));
-        int[] toolsToHide = {
-            PhotoEditorActivity.TOOL_ORIENTATION,
-            PhotoEditorActivity.TOOL_FRAME,
-            PhotoEditorActivity.TOOL_FILTER,
-            PhotoEditorActivity.TOOL_ROUND,
-            PhotoEditorActivity.TOOL_EXPOSURE,
-            PhotoEditorActivity.TOOL_CONTRAST,
-            PhotoEditorActivity.TOOL_VIGNETTE,
-            PhotoEditorActivity.TOOL_SATURATION,
-            PhotoEditorActivity.TOOL_SHARPNESS,
-            PhotoEditorActivity.TOOL_WARMTH,
-            PhotoEditorActivity.TOOL_PIXELATE,
-            PhotoEditorActivity.TOOL_STICKER
-        };
-        dsPhotoEditorIntent.putExtra(DsPhotoEditorConstants.DS_PHOTO_EDITOR_TOOLS_TO_HIDE, toolsToHide);
-        activityResultLauncher.launch(dsPhotoEditorIntent);
+    /**
+     * Retour de l'éditeur web : la photo est remplacée par sa version annotée, ou retirée.
+     * path null et removed false = l'utilisateur a quitté l'éditeur sans rien changer.
+     */
+    public void applyEdit(int index, @Nullable String path, boolean removed) {
+        if (index >= 0 && index < pictures.size()) {
+            if (removed) {
+                pictures.remove(index);
+                pictureCount = Math.max(0, pictureCount - 1);
+            } else if (path != null && new File(path).exists()) {
+                pictures.set(index, path);
+            }
+        }
+        refreshSouche();
+        defineViewVisibility();
+    }
+
+    /** Miniature = dernière photo de la liste (décodée réduite, hors du thread UI). */
+    private void refreshSouche() {
+        if (pictures.isEmpty()) {
+            souche.setImageDrawable(null);
+            return;
+        }
+        final String last = pictures.get(pictures.size() - 1);
+        cameraExecutor.execute(() -> {
+            Bitmap bitmap = null;
+            try {
+                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(last, bounds);
+                int inSampleSize = 1;
+                while (Math.max(bounds.outWidth, bounds.outHeight) / inSampleSize > 1024) {
+                    inSampleSize *= 2;
+                }
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = inSampleSize;
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                bitmap = BitmapFactory.decodeFile(last, opts);
+            } catch (Exception | OutOfMemoryError e) {
+                Log.e(SCOPLAN_TAG, "Error decoding thumbnail", e);
+            }
+            final Bitmap thumbnail = bitmap;
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (isAdded() && thumbnail != null) {
+                        souche.setImageBitmap(thumbnail);
+                    }
+                });
+            }
+        });
+    }
+
+    /** Masquée pendant l'édition web : on libère la caméra, on la relance au retour. */
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (hidden) {
+            releaseCamera();
+        } else if (isResumed()) {
+            activateCamera();
+        }
     }
 
     @Override
@@ -752,8 +715,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
         if(view.getId() == this.fakeR.getId("button_capture")) {
             this.takePicture();
         } else if(
-            view.getId() == this.fakeR.getId("draw_on_2") ||
-                view.getId() == this.fakeR.getId("image_souche") ||
+            view.getId() == this.fakeR.getId("image_souche") ||
                 view.getId() == this.fakeR.getId("draw_on")
         ) {
             this.startDrawing();
@@ -774,7 +736,7 @@ public class CameraFragment extends Fragment implements scoplan.camera.OnImageCa
             view.getId() == this.fakeR.getId("flash_btn")
         ) {
             this.flashOn = !this.flashOn;
-            this.flashBtn.setImageResource(this.fakeR.getDrawable(flashOn ? "flash_on" : "flash"));
+            this.flashBtn.setImageResource(this.fakeR.getDrawable(flashOn ? "camera_flash_on" : "camera_flash_off"));
         } else if(view.getId() == this.fakeR.getId("zoom_05x")) {
             // 0.5x — use min zoom ratio (ultra-wide range)
             if (camera != null) {
