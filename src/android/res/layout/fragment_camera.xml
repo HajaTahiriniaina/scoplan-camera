@@ -46,57 +46,49 @@
             android:layout_marginEnd="15dp"
             android:text="-"/>
     </FrameLayout>
-    <LinearLayout
+    <!-- Barre du haut : retour à gauche ; annoter puis flash à droite (boutons ronds). -->
+    <RelativeLayout
         android:id="@+id/cameraTopBar"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:orientation="horizontal"
-        android:background="#39B0F0"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:visibility="visible"
-        android:weightSum="5">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:visibility="visible">
         <ImageButton
             android:id="@+id/cancel"
-            android:layout_weight="0.5"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:scaleType="centerInside"
-            android:background="@android:color/transparent"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_alignParentLeft="true"
+            android:padding="11dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/camera_round_dark"
+            android:contentDescription="Retour"
             android:src="@drawable/back_arrow"/>
-        <Button
-            android:background="@android:color/transparent"
-            android:id="@+id/draw_on_2"
-            android:layout_weight="4"
-            android:layout_width="0dp"
-            android:textColor="#fff"
-            android:layout_height="match_parent"
-            android:text="Dessiner sur cette photo"
-            android:layout_gravity="center_vertical|end"
-            android:textAlignment="textEnd"
-            android:gravity="center_vertical|end"
-            />
         <ImageButton
             android:id="@+id/draw_on"
-            android:layout_weight="0.5"
-            android:layout_width="0dp"
-            android:scaleType="centerInside"
-            android:scaleX="-1"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/back_arrow"/>
-    </LinearLayout>
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="56dp"
+            android:padding="11dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/camera_round_blue"
+            android:contentDescription="Dessiner sur la photo"
+            android:src="@drawable/camera_edit"/>
+    </RelativeLayout>
     <ImageButton
-        android:scaleType="centerCrop"
         android:id="@+id/flash_btn"
-        android:layout_width="35dp"
-        android:layout_height="35dp"
-        android:src="@drawable/flash"
-        android:contentDescription="Flash"
-        android:background="@android:color/transparent"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:layout_alignParentRight="true"
-        android:layout_marginRight="20dp"
-        android:layout_marginTop="50dp"/>
+        android:layout_marginTop="12dp"
+        android:layout_marginRight="16dp"
+        android:padding="10dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/camera_flash_off"
+        android:contentDescription="Flash"
+        android:background="@drawable/camera_round_dark"/>
     <ImageView
         android:visibility="invisible"
         android:id="@+id/image_souche"
